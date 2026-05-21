@@ -48,28 +48,43 @@
 
       <section class="training-layout">
         <section class="network-main">
-          <section class="panel bundle-hero">
+          <section class="panel bundle-hero collapsible-panel" data-panel-id="bundle-hero">
             <div class="panel-title">
               <h2>발음 집합과 통밥 포인트</h2>
-              <span id="sourceSummaryBadge" class="status-pill">ready</span>
+              <div class="panel-title-actions">
+                <span id="sourceSummaryBadge" class="status-pill">ready</span>
+                <button class="panel-toggle" type="button" data-panel-toggle aria-label="패널 접기" aria-expanded="true">
+                  <span aria-hidden="true"></span>
+                </button>
+              </div>
             </div>
             <div id="sourceSummary" class="source-summary"></div>
             <div id="multiCharacterStrip" class="multi-character-strip"></div>
             <div id="branchCards" class="branch-grid"></div>
           </section>
 
-          <section class="panel">
+          <section class="panel collapsible-panel" data-panel-id="pronunciation-network">
             <div class="panel-title">
               <h2>발음 네트워크</h2>
-              <span id="branchCount" class="status-pill">0</span>
+              <div class="panel-title-actions">
+                <span id="branchCount" class="status-pill">0</span>
+                <button class="panel-toggle" type="button" data-panel-toggle aria-label="패널 접기" aria-expanded="true">
+                  <span aria-hidden="true"></span>
+                </button>
+              </div>
             </div>
             <div id="pronunciationGraph" class="pronunciation-graph"></div>
           </section>
 
-          <section class="panel">
+          <section class="panel collapsible-panel" data-panel-id="evolution">
             <div class="panel-title">
               <h2>발음 변천 단서</h2>
-              <span class="status-pill">available data</span>
+              <div class="panel-title-actions">
+                <span class="status-pill">available data</span>
+                <button class="panel-toggle" type="button" data-panel-toggle aria-label="패널 접기" aria-expanded="true">
+                  <span aria-hidden="true"></span>
+                </button>
+              </div>
             </div>
             <div id="evolutionLanes" class="evolution-lanes"></div>
           </section>
@@ -88,26 +103,41 @@
             <div id="readingCards" class="reading-cards"></div>
           </section>
 
-          <section class="panel">
+          <section class="panel collapsible-panel" data-panel-id="related">
             <div class="panel-title">
               <h2>형성자 추천</h2>
-              <span id="relatedCount" class="status-pill">0</span>
+              <div class="panel-title-actions">
+                <span id="relatedCount" class="status-pill">0</span>
+                <button class="panel-toggle" type="button" data-panel-toggle aria-label="패널 접기" aria-expanded="true">
+                  <span aria-hidden="true"></span>
+                </button>
+              </div>
             </div>
             <div id="relatedList" class="stack muted">선택 대기</div>
           </section>
 
-          <section class="panel">
+          <section class="panel collapsible-panel" data-panel-id="phonetic-network">
             <div class="panel-title">
               <h2>음부 네트워크</h2>
-              <span id="seriesBadge" class="status-pill">kPhonetic</span>
+              <div class="panel-title-actions">
+                <span id="seriesBadge" class="status-pill">kPhonetic</span>
+                <button class="panel-toggle" type="button" data-panel-toggle aria-label="패널 접기" aria-expanded="true">
+                  <span aria-hidden="true"></span>
+                </button>
+              </div>
             </div>
             <div id="network" class="network"></div>
           </section>
 
-          <section class="panel">
+          <section class="panel collapsible-panel" data-panel-id="tags">
             <div class="panel-title">
               <h2>목록/주석</h2>
-              <span id="tagCount" class="status-pill">0</span>
+              <div class="panel-title-actions">
+                <span id="tagCount" class="status-pill">0</span>
+                <button class="panel-toggle" type="button" data-panel-toggle aria-label="패널 접기" aria-expanded="true">
+                  <span aria-hidden="true"></span>
+                </button>
+              </div>
             </div>
             <div id="tagsAndNotes" class="tags-grid"></div>
           </section>

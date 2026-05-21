@@ -204,6 +204,44 @@ button:hover {
   font-weight: 760;
 }
 
+.panel-title-actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-toggle {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 8px;
+  padding: 0;
+  background: var(--surface-2);
+}
+
+.panel-toggle span {
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  transform: translateY(2px) rotate(-45deg);
+  transition: transform 140ms ease;
+}
+
+.collapsible-panel.is-collapsed > :not(.panel-title) {
+  display: none;
+}
+
+.collapsible-panel.is-collapsed .panel-title {
+  margin-bottom: 0;
+}
+
+.collapsible-panel.is-collapsed .panel-toggle span {
+  transform: translateY(-2px) rotate(135deg);
+}
+
 .status-pill {
   display: inline-flex;
   max-width: 100%;
@@ -723,14 +761,18 @@ button.char-chip {
   gap: 5px 8px;
   min-width: 0;
   align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
   padding: 8px;
   text-align: left;
   background: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
 }
 
 .multi-char-card.active {
   border-color: var(--green);
   background: #f1faf6;
+  box-shadow: 0 0 0 2px rgba(31, 122, 92, 0.12);
 }
 
 .multi-char-card span {
@@ -796,6 +838,43 @@ button.char-chip {
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.network-filter-strip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.network-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  border: 1px solid rgba(177, 119, 31, 0.32);
+  border-radius: 999px;
+  padding: 5px 6px 5px 9px;
+  background: #fff7e8;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.network-filter-chip strong {
+  font-family: "Noto Serif CJK KR", "Source Han Serif KR", serif;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.network-filter-chip button {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.78);
+  line-height: 1;
 }
 
 .lane-graph {
@@ -1042,6 +1121,14 @@ button.char-chip {
   border-color: rgba(177, 119, 31, 0.48);
   background: #fff7e8;
   box-shadow: inset 0 0 0 1px rgba(177, 119, 31, 0.16);
+}
+
+.node-char.is-filter-char {
+  border-color: var(--amber);
+  background: #fff0cf;
+  box-shadow:
+    inset 0 0 0 1px rgba(177, 119, 31, 0.22),
+    0 0 0 2px rgba(177, 119, 31, 0.14);
 }
 
 .char-more {

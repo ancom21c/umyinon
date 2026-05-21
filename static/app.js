@@ -11,7 +11,10 @@ const state = {
   requestId: 0,
   bundleScene: null,
   lockedReadings: {},
+  activeNetworkIndex: 0,
   visibleGraphLangs: new Set(["ko", "ja", "zh", "yue", "vi"]),
+  networkCharFilters: new Map(),
+  collapsedPanels: new Set(),
   pinnedCharacters: new Set(),
   charPreviewCache: new Map(),
   charPreviewTimer: 0,
@@ -53,6 +56,8 @@ const preferredSystems = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  initCollapsiblePanels();
+
   $("#searchForm").addEventListener("submit", (event) => {
     event.preventDefault();
     runStudy($("#sourceLang").value, $("#searchInput").value.trim());
@@ -67,8 +72,27 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.body.addEventListener("click", (event) => {
+    const panelToggle = event.target.closest("[data-panel-toggle]");
+    if (panelToggle) {
+      togglePanel(panelToggle);
+      return;
+    }
+    const studyButton = event.target.closest("[data-study-index]");
+    if (studyButton) {
+      setActiveStudyNetwork(Number(studyButton.dataset.studyIndex));
+      return;
+    }
+    const clearFilterButton = event.target.closest("[data-clear-char-filter]");
+    if (clearFilterButton) {
+      setNetworkCharFilter(Number(clearFilterButton.dataset.networkIndex ?? -1), "");
+      return;
+    }
     const pinButton = event.target.closest("[data-pin-char]");
     if (pinButton) {
+      const block = pinButton.closest("[data-pronunciation-network-index]");
+      if (block) {
+        toggleNetworkCharFilter(Number(block.dataset.pronunciationNetworkIndex ?? -1), pinButton.dataset.pinChar);
+      }
       togglePinnedCharacter(pinButton.dataset.pinChar);
       return;
     }
@@ -108,6 +132,33 @@ document.addEventListener("DOMContentLoaded", () => {
   runStudy($("#sourceLang").value, $("#searchInput").value.trim());
 });
 
+function initCollapsiblePanels() {
+  document.querySelectorAll("[data-panel-id]").forEach((panel) => {
+    const id = panel.dataset.panelId;
+    const toggle = panel.querySelector("[data-panel-toggle]");
+    const collapsed = state.collapsedPanels.has(id);
+    panel.classList.toggle("is-collapsed", collapsed);
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", String(!collapsed));
+    }
+  });
+}
+
+function togglePanel(button) {
+  const panel = button.closest("[data-panel-id]");
+  if (!panel) {
+    return;
+  }
+  const collapsed = !panel.classList.contains("is-collapsed");
+  panel.classList.toggle("is-collapsed", collapsed);
+  button.setAttribute("aria-expanded", String(!collapsed));
+  if (collapsed) {
+    state.collapsedPanels.add(panel.dataset.panelId);
+  } else {
+    state.collapsedPanels.delete(panel.dataset.panelId);
+  }
+}
+
 async function runStudy(sourceLang, query) {
   if (!query) {
     return;
@@ -140,9 +191,7 @@ async function runStudy(sourceLang, query) {
       return;
     }
     state.network = network;
-    state.lockedReadings = {
-      [network.source_lang]: network.source_reading_key || network.source_reading,
-    };
+    setSourceLockedReadings(network);
     renderNetworkStudy();
 
     if (multiInputMode) {
@@ -163,8 +212,10 @@ async function runStudy(sourceLang, query) {
       if (requestId !== state.requestId) {
         return;
       }
-      renderMultiCharacters();
-      renderPronunciationGraph(network);
+      state.activeNetworkIndex = 0;
+      state.network = state.multiNetworks[0]?.network || network;
+      setSourceLockedReadings(state.network);
+      renderNetworkStudy();
     }
 
     const firstChar = firstNetworkChar(network);
@@ -203,6 +254,8 @@ function setNetworkLoading(sourceLang, query) {
   disposeBundleScene();
   hideCharacterPreview();
   state.lockedReadings = {};
+  state.activeNetworkIndex = 0;
+  state.networkCharFilters = new Map();
   state.multiInputs = [];
   state.multiDetails = [];
   state.multiNetworks = [];
@@ -272,6 +325,29 @@ async function networkForReadingUnit(unit, sourceLang, fallbackNetwork = null) {
   }
 }
 
+function setSourceLockedReadings(network) {
+  state.lockedReadings = network
+    ? {
+        [network.source_lang]: network.source_reading_key || network.source_reading,
+      }
+    : {};
+}
+
+function setActiveStudyNetwork(index) {
+  const item = state.multiNetworks?.[index];
+  if (!item?.network) {
+    return;
+  }
+  state.activeNetworkIndex = index;
+  state.network = item.network;
+  setSourceLockedReadings(item.network);
+  renderNetworkStudy();
+  const char = item.detail?.character?.char || (containsHan(item.char || "") ? item.char : "");
+  if (char) {
+    loadCharacter(char);
+  }
+}
+
 function renderNetworkStudy() {
   const network = state.network;
   if (!network) {
@@ -318,7 +394,6 @@ function renderMultiCharacters() {
     box.innerHTML = `
       <div class="multi-head">
         <strong>입력 발음 ${readingInputs.length}개</strong>
-        <span>각 발음의 네트워크를 아래에 따로 표시</span>
       </div>
       <div class="multi-card-row">
         ${readingInputs.map((unit, index) => multiReadingCard(unit, index)).join("")}
@@ -333,10 +408,9 @@ function renderMultiCharacters() {
   box.innerHTML = `
     <div class="multi-head">
       <strong>입력 글자 ${details.length}자</strong>
-      <span>각 글자의 발음 네트워크를 아래에 따로 표시</span>
     </div>
     <div class="multi-card-row">
-      ${details.map((detail) => multiCharacterCard(detail)).join("")}
+      ${details.map((detail, index) => multiCharacterCard(detail, index)).join("")}
     </div>
   `;
 }
@@ -345,22 +419,23 @@ function multiReadingCard(unit, index) {
   const item = (state.multiNetworks || [])[index] || {};
   const total = item.network?.total_characters;
   const summary = total === undefined ? "계산 중" : `${total}자`;
-  const active = index === 0 && state.network?.source_reading === unit.reading ? "active" : "";
+  const active = index === state.activeNetworkIndex ? "active" : "";
   return `
-    <div class="multi-char-card reading-token-card ${active}">
+    <button class="multi-char-card reading-token-card ${active}" type="button" data-study-index="${index}" aria-pressed="${active ? "true" : "false"}">
       <span>${escapeHTML(unit.label || unit.reading)}</span>
       <strong>${escapeHTML(formatLang(unit.sourceLang || state.network?.source_lang || "ko"))}</strong>
       <small>${escapeHTML(summary)}</small>
-    </div>
+    </button>
   `;
 }
 
-function multiCharacterCard(detail) {
+function multiCharacterCard(detail, index) {
   const char = detail.character || {};
   const readings = compactReadings(detail.readings || []);
   const variants = compactVariantText(detail);
+  const active = index === state.activeNetworkIndex ? "active" : "";
   return `
-    <button class="multi-char-card ${char.char === state.selectedChar ? "active" : ""}" type="button" data-char="${escapeHTML(char.char)}">
+    <button class="multi-char-card ${active}" type="button" data-study-index="${index}" data-char="${escapeHTML(char.char)}" aria-pressed="${active ? "true" : "false"}">
       <span>${escapeHTML(char.char)}</span>
       <strong>${escapeHTML(readings || "발음 없음")}</strong>
       <small>${escapeHTML(variants || shortDefinition(char.definition))}</small>
@@ -405,7 +480,8 @@ function pronunciationNetworkBlock(item) {
       </section>
     `;
   }
-  const columns = buildLanguageColumns(item.network);
+  const filterChar = selectedNetworkCharFilter(item.networkIndex ?? -1);
+  const columns = buildLanguageColumns(item.network, filterChar);
   if (!columns.some((column) => column.nodes.length)) {
     return `
       <section class="pronunciation-network-block" data-pronunciation-network-index="${item.networkIndex ?? -1}">
@@ -424,6 +500,7 @@ function pronunciationNetworkBlock(item) {
         <h3>${escapeHTML(item.char || firstNetworkChar(item.network) || item.network.source_reading)}</h3>
         <span>${escapeHTML(formatLang(item.network.source_lang))} ${escapeHTML(item.reading || item.network.source_reading)} · ${item.network.total_characters || 0}자</span>
       </div>
+      ${filterChar ? networkFilterChip(filterChar, item.networkIndex ?? -1) : ""}
       ${pinned.length ? pinnedCharacterTray(pinned) : ""}
       <div class="lane-graph" role="list" aria-label="pronunciation graph">
       ${columns
@@ -435,7 +512,7 @@ function pronunciationNetworkBlock(item) {
                 <span>${column.nodes.length}갈래</span>
               </div>
               <div class="lane-nodes">
-                ${column.nodes.map((node) => readingNode(node, item.network.total_characters)).join("")}
+                ${column.nodes.map((node) => readingNode(node, item.network.total_characters, filterChar)).join("")}
               </div>
             </section>
           `,
@@ -443,6 +520,17 @@ function pronunciationNetworkBlock(item) {
         .join("")}
       </div>
     </section>
+  `;
+}
+
+function networkFilterChip(char, networkIndex) {
+  return `
+    <div class="network-filter-strip">
+      <span class="network-filter-chip">
+        <strong>${escapeHTML(char)}</strong>
+        <button type="button" data-clear-char-filter data-network-index="${networkIndex}" aria-label="한자 필터 해제">×</button>
+      </span>
+    </div>
   `;
 }
 
@@ -496,9 +584,11 @@ function renderBranchCards(network) {
   }
 }
 
-function buildLanguageColumns(network) {
+function buildLanguageColumns(network, filterChar = "") {
   const details = characterDetailsFromNetwork(network);
-  const chars = sourceCharactersForNetwork(network, details);
+  const chars = filterChar
+    ? charObjectsFromValues([filterChar], details, 1)
+    : sourceCharactersForNetwork(network, details);
   return visibleGraphLangList(network.source_lang).map((lang) => {
     const nodes =
       lang === network.source_lang
@@ -507,37 +597,47 @@ function buildLanguageColumns(network) {
               lang,
               key: network.source_reading_key || network.source_reading,
               display: [network.source_reading],
-              count: network.total_characters || 0,
+              count: filterChar ? 1 : network.total_characters || 0,
               source: true,
               characters: chars,
             },
           ]
         : (network.target_groups || [])
             .filter((group) => group.target_lang === lang)
-            .slice(0, 8)
-            .map((group) => ({
-              lang,
-              key: group.target_reading_key,
-              display: group.display_readings || [],
-              count: group.character_count || 0,
-              source: false,
-              characters: charactersForReadingGroup(group, details),
-            }));
+            .filter((group) => !filterChar || groupSupportsChar(group, filterChar, details))
+            .slice(0, filterChar ? 16 : 8)
+            .map((group) => {
+              const groupChars = charactersForReadingGroup(group, details);
+              const characters = filterChar
+                ? groupChars.filter((char) => (char.char || char) === filterChar)
+                : groupChars;
+              return {
+                lang,
+                key: group.target_reading_key,
+                display: group.display_readings || [],
+                count: filterChar ? Math.max(characters.length, 1) : group.character_count || 0,
+                source: false,
+                characters: characters.length || !filterChar ? characters : charObjectsFromValues([filterChar], details, 1),
+              };
+            });
     return { lang, nodes };
   });
 }
 
-function readingNode(node, total) {
-  const pct = total ? Math.round((node.count / total) * 100) : 0;
+function readingNode(node, total, filterChar = "") {
+  const pct = filterChar ? 100 : total ? Math.round((node.count / total) * 100) : 0;
   const shownChars = (node.characters || []).slice(0, 96);
   const chars = shownChars
-    .map(
-      (char) => `
-        <button class="node-char ${state.pinnedCharacters.has(char.char || char) ? "is-pinned-char" : ""}" type="button" data-char="${escapeHTML(char.char || char)}" data-pin-char="${escapeHTML(char.char || char)}" aria-pressed="${state.pinnedCharacters.has(char.char || char) ? "true" : "false"}">
-          ${escapeHTML(char.char || char)}
+    .map((char) => {
+      const value = char.char || char;
+      const pinned = state.pinnedCharacters.has(value);
+      const filtered = filterChar && value === filterChar;
+      return `
+        <button class="node-char ${pinned ? "is-pinned-char" : ""} ${filtered ? "is-filter-char" : ""}" type="button" data-char="${escapeHTML(value)}" data-pin-char="${escapeHTML(value)}" aria-pressed="${pinned ? "true" : "false"}">
+          ${escapeHTML(value)}
         </button>
-      `,
-    )
+      `;
+    })
     .join("");
   const more = node.count > shownChars.length ? `<span class="char-more">+${node.count - shownChars.length}</span>` : "";
   return `
@@ -591,6 +691,13 @@ function charactersForReadingGroup(group, details) {
     values.push(char.char || char);
   }
   return charObjectsFromValues(values, details, 120);
+}
+
+function groupSupportsChar(group, char, details) {
+  if (!char) {
+    return true;
+  }
+  return charactersForReadingGroup(group, details).some((entry) => (entry.char || entry) === char);
 }
 
 function charObjectsFromValues(values, details, limit) {
@@ -1368,6 +1475,32 @@ function networkForReadingElement(element) {
     return state.multiNetworks?.[index]?.network || state.network;
   }
   return state.network;
+}
+
+function networkFilterKey(index) {
+  return Number.isInteger(index) ? String(index) : "-1";
+}
+
+function selectedNetworkCharFilter(index) {
+  return state.networkCharFilters.get(networkFilterKey(index)) || "";
+}
+
+function setNetworkCharFilter(index, char) {
+  const key = networkFilterKey(index);
+  if (char) {
+    state.networkCharFilters.set(key, char);
+  } else {
+    state.networkCharFilters.delete(key);
+  }
+  renderPronunciationGraph(state.network);
+}
+
+function toggleNetworkCharFilter(index, char) {
+  if (!char) {
+    return;
+  }
+  const current = selectedNetworkCharFilter(index);
+  setNetworkCharFilter(index, current === char ? "" : char);
 }
 
 function linkedReadingIDs(lang, key, network) {
