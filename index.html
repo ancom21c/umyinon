@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Umyinon</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/static/assets/umyinon-icon.png" />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark"><img src="/static/assets/umyinon-icon.png" alt="" /></span>
+          <div>
+            <h1>Umyinon</h1>
+            <p>형성자와 한중일 발음 통밥 훈련</p>
+          </div>
+        </div>
+        <form id="searchForm" class="search-form network-search">
+          <select id="sourceLang" aria-label="center language">
+            <option value="ko">한국어</option>
+            <option value="ja">일본어</option>
+            <option value="zh">중국어(북경어)</option>
+            <option value="yue">중국어(광둥어)</option>
+            <option value="vi">베트남어</option>
+          </select>
+          <input
+            id="searchInput"
+            name="q"
+            type="search"
+            autocomplete="off"
+            value="정"
+            placeholder="정, 음, jing, jam1, âm, 音 聲 體"
+          />
+          <button type="submit">보기</button>
+        </form>
+        <div class="quick-picks" aria-label="quick queries">
+          <button type="button" data-lang="ko" data-query="정">정</button>
+          <button type="button" data-lang="ko" data-query="음">음</button>
+          <button type="button" data-lang="ja" data-query="sei">sei</button>
+          <button type="button" data-lang="zh" data-query="jing">jing</button>
+          <button type="button" data-lang="yue" data-query="jam1">jam1</button>
+          <button type="button" data-lang="vi" data-query="âm">âm</button>
+        </div>
+      </header>
+
+      <section class="training-layout">
+        <section class="network-main">
+          <section class="panel bundle-hero">
+            <div class="panel-title">
+              <h2>발음 집합과 통밥 포인트</h2>
+              <span id="sourceSummaryBadge" class="status-pill">ready</span>
+            </div>
+            <div id="sourceSummary" class="source-summary"></div>
+            <div id="multiCharacterStrip" class="multi-character-strip"></div>
+            <div id="branchCards" class="branch-grid"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-title">
+              <h2>발음 네트워크</h2>
+              <span id="branchCount" class="status-pill">0</span>
+            </div>
+            <div id="pronunciationGraph" class="pronunciation-graph"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-title">
+              <h2>발음 변천 단서</h2>
+              <span class="status-pill">available data</span>
+            </div>
+            <div id="evolutionLanes" class="evolution-lanes"></div>
+          </section>
+        </section>
+
+        <aside class="study-sidebar">
+          <section class="character-panel compact-character">
+            <div class="character-head">
+              <div id="glyph" class="glyph">定</div>
+              <div class="character-copy">
+                <div id="codepoint" class="codepoint">U+5B9A</div>
+                <h2 id="definition">fixed, settled, definite</h2>
+                <div id="characterMeta" class="meta-line"></div>
+              </div>
+            </div>
+            <div id="readingCards" class="reading-cards"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-title">
+              <h2>형성자 추천</h2>
+              <span id="relatedCount" class="status-pill">0</span>
+            </div>
+            <div id="relatedList" class="stack muted">선택 대기</div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-title">
+              <h2>음부 네트워크</h2>
+              <span id="seriesBadge" class="status-pill">kPhonetic</span>
+            </div>
+            <div id="network" class="network"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-title">
+              <h2>목록/주석</h2>
+              <span id="tagCount" class="status-pill">0</span>
+            </div>
+            <div id="tagsAndNotes" class="tags-grid"></div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>
