@@ -46,6 +46,9 @@ const systemLabels = {
 };
 
 const displayLangs = ["ko", "ja", "zh", "yue", "vi"];
+const defaultPublicAPIBase = "https://umyinon-api.ancom.duckdns.org";
+const backendHostnames = new Set(["umyinon.ancom.duckdns.org", "umyinon-api.ancom.duckdns.org"]);
+const apiBase = resolveAPIBase();
 
 const preferredSystems = {
   ko: ["hangul", "romanized"],
@@ -264,6 +267,8 @@ function setNetworkLoading(sourceLang, query) {
   $("#multiCharacterStrip").innerHTML = "";
   $("#pronunciationGraph").innerHTML = "";
   $("#branchCards").innerHTML = `<div class="empty">갈래 계산 중</div>`;
+  $("#branchInsights").innerHTML = `<div class="empty">갈래 계산 중</div>`;
+  $("#branchInsightCount").textContent = "0";
   $("#evolutionLanes").innerHTML = `<div class="empty">변천 단서 계산 중</div>`;
 }
 
@@ -539,13 +544,33 @@ function renderBranchCards(network) {
   const bundles = network.bundles || [];
   if (!groups.length && !bundles.length) {
     $("#branchCards").innerHTML = `<div class="empty">발음 갈래 없음</div>`;
+    renderBranchInsights(network, groups);
     disposeBundleScene();
     return;
   }
   const visibleBundles = bundles.slice(0, 12);
   const hasSceneGraph = visibleBundles.length || groups.length;
   const bundleHTML = hasSceneGraph ? bundleGraph(network, visibleBundles) : "";
-  const groupHTML = groups
+  $("#branchCards").innerHTML = bundleHTML || `<div class="empty">발음 집합 그래프 없음</div>`;
+  renderBranchInsights(network, groups);
+  if (hasSceneGraph) {
+    requestAnimationFrame(() => mountBundleScene(network, visibleBundles));
+  } else {
+    disposeBundleScene();
+  }
+}
+
+function renderBranchInsights(network, groups) {
+  const target = $("#branchInsights");
+  if (!target) {
+    return;
+  }
+  $("#branchInsightCount").textContent = String(groups.length || 0);
+  if (!groups.length) {
+    target.innerHTML = `<div class="empty">발음 갈래 없음</div>`;
+    return;
+  }
+  target.innerHTML = groups
     .slice(0, 9)
     .map((group) => {
       const pct = network.total_characters
@@ -576,12 +601,6 @@ function renderBranchCards(network) {
       `;
     })
     .join("");
-  $("#branchCards").innerHTML = bundleHTML + groupHTML;
-  if (hasSceneGraph) {
-    requestAnimationFrame(() => mountBundleScene(network, visibleBundles));
-  } else {
-    disposeBundleScene();
-  }
 }
 
 function buildLanguageColumns(network, filterChar = "") {
@@ -2615,8 +2634,37 @@ function formatTag(tag) {
   return `${region}${tag.system}:${tag.tag_type} ${tag.tag_value}`;
 }
 
+function resolveAPIBase() {
+  const explicit =
+    window.UMYINON_API_BASE ||
+    document.querySelector('meta[name="umyinon-api-base"]')?.content ||
+    "";
+  if (explicit.trim()) {
+    return explicit.trim().replace(/\/+$/u, "");
+  }
+  if (window.location.protocol === "file:") {
+    return defaultPublicAPIBase;
+  }
+  const host = window.location.hostname;
+  const localHosts = new Set(["", "localhost", "127.0.0.1", "0.0.0.0", "::1"]);
+  if (!localHosts.has(host) && !backendHostnames.has(host)) {
+    return defaultPublicAPIBase;
+  }
+  return "";
+}
+
+function apiURL(url) {
+  if (/^https?:\/\//iu.test(url)) {
+    return url;
+  }
+  if (!apiBase) {
+    return url;
+  }
+  return `${apiBase}${url.startsWith("/") ? url : `/${url}`}`;
+}
+
 async function fetchJSON(url) {
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  const response = await fetch(apiURL(url), { headers: { Accept: "application/json" } });
   if (!response.ok) {
     const text = await response.text();
     throw new Error(text || `HTTP ${response.status}`);

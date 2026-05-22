@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="umyinon-api-base" content="" />
     <title>Umyinon</title>
     <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/favicon-32.png" />
     <link rel="apple-touch-icon" href="/static/assets/umyinon-icon.png" />
@@ -74,6 +75,19 @@
               </div>
             </div>
             <div id="pronunciationGraph" class="pronunciation-graph"></div>
+          </section>
+
+          <section class="panel branch-insight-panel collapsible-panel" data-panel-id="branch-insights">
+            <div class="panel-title">
+              <h2>발음 갈래 요약</h2>
+              <div class="panel-title-actions">
+                <span id="branchInsightCount" class="status-pill">0</span>
+                <button class="panel-toggle" type="button" data-panel-toggle aria-label="패널 접기" aria-expanded="true">
+                  <span aria-hidden="true"></span>
+                </button>
+              </div>
+            </div>
+            <div id="branchInsights" class="branch-insight-grid"></div>
           </section>
 
           <section class="panel collapsible-panel" data-panel-id="evolution">

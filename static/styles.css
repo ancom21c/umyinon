@@ -1146,6 +1146,12 @@ button.char-chip {
   gap: 10px;
 }
 
+.branch-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+}
+
 .bundle-board {
   grid-column: 1 / -1;
   display: grid;
@@ -1562,21 +1568,38 @@ button.char-chip {
 }
 
 .bundle-path-list.compact {
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 1px 2px 5px;
+  scrollbar-width: thin;
 }
 
 .bundle-path-list.compact .bundle-path {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 0 0 232px;
+  gap: 5px;
+  align-items: stretch;
+  padding: 7px;
 }
 
 .bundle-path-list.compact .bundle-node {
-  min-height: 54px;
-  padding: 8px;
+  min-height: 42px;
+  gap: 3px;
+  padding: 5px 6px;
+}
+
+.bundle-path-list.compact .bundle-node::before {
+  height: 2px;
+}
+
+.bundle-path-list.compact .bundle-node small {
+  font-size: 9px;
 }
 
 .bundle-path-list.compact .bundle-node strong {
-  font-size: 16px;
+  font-size: 12px;
+  line-height: 1.08;
 }
 
 .bundle-path-list.compact .bundle-arrow {
@@ -1584,8 +1607,30 @@ button.char-chip {
 }
 
 .bundle-path-list.compact .bundle-path-support {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  min-height: 28px;
   border-top: 1px solid var(--line);
-  padding-top: 6px;
+  padding-top: 5px;
+}
+
+.bundle-path-list.compact .bundle-path-support strong {
+  font-size: 11px;
+}
+
+.bundle-path-list.compact .bundle-path-support .node-char-row {
+  flex: 1;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bundle-path-list.compact .node-char {
+  min-width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 16px;
 }
 
 .bundle-path {
@@ -1736,6 +1781,10 @@ button.char-chip {
   background: var(--surface-2);
 }
 
+.branch-insight-grid .branch-card {
+  padding: 9px;
+}
+
 .branch-card.ko {
   border-color: rgba(31, 122, 92, 0.28);
 }
@@ -1764,10 +1813,19 @@ button.char-chip {
   margin-bottom: 10px;
 }
 
+.branch-insight-grid .branch-head {
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
 .branch-head h3 {
   margin: 0;
   font-size: 18px;
   line-height: 1.2;
+}
+
+.branch-insight-grid .branch-head h3 {
+  font-size: 15px;
 }
 
 .branch-head p {
@@ -1775,6 +1833,11 @@ button.char-chip {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.45;
+}
+
+.branch-insight-grid .branch-head p {
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .branch-score {
@@ -1790,11 +1853,23 @@ button.char-chip {
   font-size: 13px;
 }
 
+.branch-insight-grid .branch-score {
+  min-width: 36px;
+  height: 36px;
+  font-size: 11px;
+}
+
 .char-strip {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
   gap: 6px;
   margin-top: 10px;
+}
+
+.branch-insight-grid .char-strip {
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 5px;
+  margin-top: 7px;
 }
 
 .cluster-stack {
@@ -1803,11 +1878,20 @@ button.char-chip {
   margin-top: 10px;
 }
 
+.branch-insight-grid .cluster-stack {
+  gap: 6px;
+  margin-top: 7px;
+}
+
 .phonetic-cluster {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px;
   background: #fff;
+}
+
+.branch-insight-grid .phonetic-cluster {
+  padding: 6px;
 }
 
 .cluster-head {
@@ -1836,6 +1920,11 @@ button.char-chip {
   background: #fff;
 }
 
+.branch-insight-grid .branch-char {
+  min-height: 44px;
+  padding: 4px 3px;
+}
+
 .branch-char.active {
   border-color: var(--green);
   background: #f1faf6;
@@ -1848,12 +1937,21 @@ button.char-chip {
   line-height: 1;
 }
 
+.branch-insight-grid .branch-char span {
+  font-size: 19px;
+}
+
 .branch-char small {
   display: block;
   margin-top: 5px;
   color: var(--muted);
   font-size: 10px;
   overflow-wrap: anywhere;
+}
+
+.branch-insight-grid .branch-char small {
+  margin-top: 3px;
+  font-size: 9px;
 }
 
 .evolution-lanes {
@@ -1997,7 +2095,8 @@ button.char-chip {
   .right-rail,
   .study-sidebar,
   .training-layout,
-  .branch-grid {
+  .branch-grid,
+  .branch-insight-grid {
     grid-template-columns: 1fr;
   }
 
