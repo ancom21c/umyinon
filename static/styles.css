@@ -632,6 +632,7 @@ button.char-chip {
   position: fixed;
   z-index: 6200;
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 8px;
   max-height: min(430px, calc(100vh - 24px));
   overflow: hidden;
@@ -693,10 +694,13 @@ button.char-chip {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
   gap: 6px;
+  max-height: var(--picker-grid-max-height, 300px);
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding-right: 2px;
   scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 }
 
 .reading-picker-char {

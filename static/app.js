@@ -768,8 +768,8 @@ function openReadingCharPicker(trigger) {
   const picker = ensureReadingCharPicker();
   picker.dataset.networkIndex = String(networkIndex);
   picker.innerHTML = renderReadingCharPicker(network, lang, key, characters);
-  positionReadingCharPicker(picker, trigger);
   picker.hidden = false;
+  positionReadingCharPicker(picker, trigger);
 }
 
 function ensureReadingCharPicker() {
@@ -813,19 +813,25 @@ function positionReadingCharPicker(picker, target) {
   const rect = target.getBoundingClientRect();
   const width = Math.min(320, window.innerWidth - 24);
   const left = Math.min(Math.max(12, rect.left + rect.width / 2 - width / 2), window.innerWidth - width - 12);
-  const belowTop = rect.bottom + 10;
-  const aboveTop = rect.top - 10;
+  const gap = 10;
+  const viewportPadding = 12;
+  const belowTop = rect.bottom + gap;
+  const aboveTop = rect.top - gap;
+  const availableBelow = window.innerHeight - rect.bottom - gap - viewportPadding;
+  const availableAbove = rect.top - gap - viewportPadding;
+  const placeAbove = availableBelow < 240 && availableAbove > availableBelow;
+  const availableHeight = Math.max(160, Math.min(430, placeAbove ? availableAbove : availableBelow));
+  const gridMaxHeight = Math.max(96, availableHeight - 78);
   picker.style.width = `${width}px`;
   picker.style.left = `${left}px`;
-  picker.style.top = `${belowTop}px`;
-  picker.classList.remove("above");
-  requestAnimationFrame(() => {
-    const height = picker.offsetHeight || 240;
-    if (belowTop + height > window.innerHeight - 12 && aboveTop - height > 12) {
-      picker.style.top = `${aboveTop}px`;
-      picker.classList.add("above");
-    }
-  });
+  picker.style.maxHeight = `${availableHeight}px`;
+  picker.style.setProperty("--picker-grid-max-height", `${gridMaxHeight}px`);
+  picker.style.top = `${placeAbove ? aboveTop : belowTop}px`;
+  picker.classList.toggle("above", placeAbove);
+  const grid = picker.querySelector(".reading-picker-grid");
+  if (grid) {
+    grid.scrollTop = 0;
+  }
 }
 
 function chooseReadingPickerChar(button) {
