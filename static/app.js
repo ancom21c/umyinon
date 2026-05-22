@@ -23,11 +23,11 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 
 const langLabels = {
-  ko: "한국어",
-  ja: "일본어",
-  zh: "중국어(북경어)",
-  yue: "중국어(광둥어)",
-  vi: "베트남어",
+  ko: "한국어 (한국어)",
+  ja: "일본어 (日本語)",
+  zh: "중국어 보통화 (普通话)",
+  yue: "중국어 광둥어 (粵語)",
+  vi: "베트남어 (Tiếng Việt)",
 };
 
 const systemLabels = {
@@ -761,7 +761,6 @@ function networkCharacterSet(network) {
 }
 
 function bundleGraph(network, bundles) {
-  const axis = sceneAxisLabels(network.source_lang);
   return `
     <section class="bundle-board bundle-board-3d">
       <div class="bundle-title">
@@ -774,15 +773,6 @@ function bundleGraph(network, bundles) {
       <div id="bundleScene" class="bundle-scene">
         <div id="lockedCombo" class="locked-combo"></div>
         <div id="bundleSceneLabels" class="bundle-scene-labels"></div>
-        <div class="bundle-depth-axis" aria-hidden="true">
-          <span>${escapeHTML(axis.left)}</span>
-          <span>${escapeHTML(formatLang(network.source_lang))}</span>
-          <span>${escapeHTML(axis.right)}</span>
-        </div>
-        <div class="bundle-vertical-axis" aria-hidden="true">
-          <span>${escapeHTML(axis.top)}</span>
-          <span>${escapeHTML(axis.bottom)}</span>
-        </div>
       </div>
       ${
         bundles.length
@@ -827,22 +817,6 @@ function visibleGraphLangSet(sourceLang = state.network?.source_lang || "ko") {
 function visibleGraphLangList(sourceLang = state.network?.source_lang || "ko") {
   const visible = visibleGraphLangSet(sourceLang);
   return displayLangs.filter((lang) => visible.has(lang));
-}
-
-function sceneAxisLabels(sourceLang) {
-  const sides = { left: [], right: [], top: [], bottom: [] };
-  for (const lang of visibleGraphLangList(sourceLang)) {
-    if (lang === sourceLang) {
-      continue;
-    }
-    sides[sceneSideForLang(lang, sourceLang)].push(formatLang(lang));
-  }
-  return {
-    left: sides.left.join(" / ") || "좌측",
-    right: sides.right.join(" / ") || "우측",
-    top: sides.top.join(" / "),
-    bottom: sides.bottom.join(" / "),
-  };
 }
 
 function bundlePath(bundle, index) {
@@ -901,6 +875,10 @@ function mountBundleScene(network, bundles) {
   disposeBundleScene();
 
   const graph = buildBundleSceneModel(network, bundles);
+  const denseScene = graph.nodes.size > 9;
+  const veryDenseScene = graph.nodes.size > 14;
+  container.classList.toggle("is-dense", denseScene);
+  container.classList.toggle("is-very-dense", veryDenseScene);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
   camera.position.set(0, 0.6, 9.4);
@@ -952,7 +930,8 @@ function mountBundleScene(network, bundles) {
   }
 
   for (const node of graph.nodes.values()) {
-    const radius = node.source ? 0.48 : Math.min(0.22 + Math.sqrt(node.count) / 30, 0.42);
+    const radiusScale = veryDenseScene ? 0.78 : denseScene ? 0.88 : 1;
+    const radius = (node.source ? 0.48 : Math.min(0.22 + Math.sqrt(node.count) / 30, 0.42)) * radiusScale;
     const geometry = node.source
       ? new THREE.DodecahedronGeometry(radius, 1)
       : new THREE.IcosahedronGeometry(radius, 2);
@@ -1003,6 +982,7 @@ function mountBundleScene(network, bundles) {
       ? 100
       : Math.min(Math.max(Math.round((node.count / Math.max(network.total_characters || node.count || 1, 1)) * 100), 8), 100);
     label.style.setProperty("--node-meter", `${nodePct}%`);
+    const charLimit = veryDenseScene ? 3 : denseScene ? 4 : 6;
     label.innerHTML = `
       <span class="node-cap">
         <small>${escapeHTML(formatLang(node.lang))}</small>
@@ -1010,7 +990,7 @@ function mountBundleScene(network, bundles) {
       </span>
       <strong>${escapeHTML(readingDisplay(node.key, node.display, node.lang))}</strong>
       <i class="node-meter" aria-hidden="true"></i>
-      <em>${escapeHTML(node.chars.slice(0, 6).join(" "))}</em>
+      <em>${escapeHTML(node.chars.slice(0, charLimit).join(" "))}</em>
     `;
     labelLayer.appendChild(label);
     nodeObjects.set(node.id, { mesh, ring, wire, label, node });
@@ -1023,9 +1003,9 @@ function mountBundleScene(network, bundles) {
     if (width < 560) {
       root.scale.set(0.58, 1.08, 0.58);
     } else {
-      root.scale.setScalar(1);
+      root.scale.setScalar(veryDenseScene ? 0.86 : denseScene ? 0.94 : 1);
     }
-    camera.position.z = width < 560 ? 14.5 : 9.4;
+    camera.position.z = width < 560 ? 14.5 : veryDenseScene ? 10.8 : denseScene ? 10.1 : 9.4;
     camera.position.y = width < 560 ? 0.25 : 0.6;
     camera.fov = width < 560 ? 48 : 42;
     camera.aspect = width / height;
@@ -1088,6 +1068,7 @@ function disposeBundleScene() {
   });
   active.renderer.dispose();
   active.renderer.domElement.remove();
+  active.container?.classList.remove("is-dense", "is-very-dense");
   if (active.labelLayer) {
     active.labelLayer.innerHTML = "";
   }
@@ -1153,8 +1134,7 @@ function buildBundleSceneModel(network, bundles) {
     }
   });
 
-  (network.target_groups || [])
-    .filter((group) => visibleLangs.has(group.target_lang))
+  sceneTargetGroups(network.target_groups || [], visibleLangs)
     .forEach((group, index) => {
       const reading = {
         lang: group.target_lang,
@@ -1171,6 +1151,7 @@ function buildBundleSceneModel(network, bundles) {
       }
     });
 
+  pruneSceneNodes(nodes, edges, 4);
   layoutSceneSide(nodes, "left");
   layoutSceneSide(nodes, "right");
   layoutSceneSide(nodes, "top");
@@ -1187,6 +1168,55 @@ function buildBundleSceneModel(network, bundles) {
     }
   }
   return { edges, nodes };
+}
+
+function pruneSceneNodes(nodes, edges, perLanguageLimit) {
+  const keep = new Set();
+  for (const node of nodes.values()) {
+    if (node.source) {
+      keep.add(node.id);
+    }
+  }
+  for (const lang of displayLangs) {
+    const items = [...nodes.values()]
+      .filter((node) => !node.source && node.lang === lang)
+      .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
+    for (const node of items.slice(0, perLanguageLimit)) {
+      keep.add(node.id);
+    }
+  }
+  for (const id of [...nodes.keys()]) {
+    if (!keep.has(id)) {
+      nodes.delete(id);
+    }
+  }
+  for (let index = edges.length - 1; index >= 0; index--) {
+    const edge = edges[index];
+    if (!nodes.has(edge.source) || !nodes.has(edge.target)) {
+      edges.splice(index, 1);
+    }
+  }
+}
+
+function sceneTargetGroups(groups, visibleLangs) {
+  const perLanguageLimit = 4;
+  const buckets = new Map();
+  for (const group of groups || []) {
+    if (!visibleLangs.has(group.target_lang)) {
+      continue;
+    }
+    if (!buckets.has(group.target_lang)) {
+      buckets.set(group.target_lang, []);
+    }
+    buckets.get(group.target_lang).push(group);
+  }
+  const ordered = [];
+  for (const lang of displayLangs) {
+    const bucket = buckets.get(lang) || [];
+    bucket.sort((a, b) => (b.character_count || 0) - (a.character_count || 0) || groupTitle(a).localeCompare(groupTitle(b)));
+    ordered.push(...bucket.slice(0, perLanguageLimit));
+  }
+  return ordered;
 }
 
 function sceneEdge(source, target, bundle, index, direction) {
@@ -1269,21 +1299,60 @@ function mergeDisplayReadings(node, readings) {
 function positionBundleLabels(container, camera, nodeObjects) {
   const width = container.clientWidth || 1;
   const height = container.clientHeight || 1;
-  const narrow = width < 560;
-  const vector = new THREE.Vector3();
-  for (const { mesh, label, node } of nodeObjects.values()) {
-    if (narrow && node.side !== "center" && node.sideRank > 1) {
-      label.style.display = "none";
-      continue;
+  const narrow = width < 620;
+  const items = [...nodeObjects.values()];
+  const sideBuckets = new Map();
+  for (const item of items) {
+    const side = item.node.side || "center";
+    if (!sideBuckets.has(side)) {
+      sideBuckets.set(side, []);
     }
-    label.style.display = "";
-    mesh.getWorldPosition(vector);
-    vector.project(camera);
-    const x = (vector.x * 0.5 + 0.5) * width;
-    const y = (-vector.y * 0.5 + 0.5) * height;
-    label.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
-    label.style.zIndex = String(Math.round((1 - vector.z) * 1000));
+    sideBuckets.get(side).push(item);
   }
+  for (const bucket of sideBuckets.values()) {
+    bucket.sort((a, b) => (a.node.sideRank ?? 0) - (b.node.sideRank ?? 0) || b.node.count - a.node.count);
+  }
+
+  const marginX = narrow ? 76 : 104;
+  const topY = narrow ? 88 : 102;
+  const bottomY = height - (narrow ? 78 : 92);
+  for (const item of items) {
+    const { label, node } = item;
+    label.style.display = "";
+    const bucket = sideBuckets.get(node.side || "center") || [item];
+    const index = bucket.indexOf(item);
+    const count = Math.max(bucket.length, 1);
+    const { x, y } = labelLanePosition(node.side, index, count, width, height, marginX, topY, bottomY);
+    label.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+    label.style.zIndex = node.source ? "2200" : String(1200 - index);
+  }
+}
+
+function labelLanePosition(side, index, count, width, height, marginX, topY, bottomY) {
+  const middleTop = topY + 98;
+  const middleBottom = bottomY - 98;
+  const verticalTop = middleTop < middleBottom ? middleTop : topY + 42;
+  const verticalBottom = middleTop < middleBottom ? middleBottom : bottomY - 42;
+  if (side === "center") {
+    return { x: width / 2, y: height / 2 };
+  }
+  if (side === "left" || side === "right") {
+    return {
+      x: side === "left" ? marginX : width - marginX,
+      y: distributedPosition(index, count, verticalTop, verticalBottom),
+    };
+  }
+  return {
+    x: distributedPosition(index, count, marginX + 18, width - marginX - 18),
+    y: side === "top" ? topY : bottomY,
+  };
+}
+
+function distributedPosition(index, count, start, end) {
+  if (count <= 1) {
+    return (start + end) / 2;
+  }
+  return start + ((end - start) * index) / (count - 1);
 }
 
 function updateBundleSceneActivation(lang = "", key = "") {

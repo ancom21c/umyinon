@@ -1216,6 +1216,10 @@ button.char-chip {
   user-select: none;
 }
 
+.graph-lang-chip span {
+  overflow-wrap: anywhere;
+}
+
 .graph-lang-chip input {
   width: 13px;
   height: 13px;
@@ -1398,10 +1402,10 @@ button.char-chip {
 .bundle-3d-label {
   position: absolute;
   display: grid;
-  gap: 6px;
-  min-width: 116px;
-  max-width: 168px;
-  padding: 10px 11px 11px 15px;
+  gap: 5px;
+  min-width: 108px;
+  max-width: 154px;
+  padding: 9px 10px 10px 14px;
   border: 1px solid rgba(31, 41, 55, 0.14);
   border-radius: 8px;
   background:
@@ -1456,17 +1460,42 @@ button.char-chip {
 }
 
 .bundle-3d-label.source {
-  min-width: 148px;
+  min-width: 140px;
   background:
     linear-gradient(145deg, rgba(241, 250, 246, 0.98), rgba(255, 255, 255, 0.9)),
     rgba(241, 250, 246, 0.94);
 }
 
+.bundle-scene.is-dense .bundle-3d-label {
+  gap: 4px;
+  min-width: 94px;
+  max-width: 132px;
+  padding: 7px 8px 8px 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 10px 24px rgba(31, 41, 55, 0.13);
+}
+
+.bundle-scene.is-very-dense .bundle-3d-label {
+  min-width: 86px;
+  max-width: 116px;
+  padding: 6px 7px 7px 11px;
+}
+
+.bundle-scene.is-dense .bundle-3d-label.source {
+  min-width: 120px;
+}
+
+.bundle-scene.is-very-dense .bundle-3d-label.source {
+  min-width: 108px;
+}
+
 .node-cap {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
 }
 
 .bundle-3d-label small,
@@ -1476,11 +1505,29 @@ button.char-chip {
   line-height: 1.1;
 }
 
+.bundle-3d-label small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .bundle-3d-label strong {
   color: var(--text);
   font-size: 22px;
   line-height: 1.08;
   overflow-wrap: anywhere;
+}
+
+.bundle-scene.is-dense .bundle-3d-label small,
+.bundle-scene.is-dense .node-cap span {
+  font-size: 9px;
+}
+
+.bundle-scene.is-dense .bundle-3d-label strong {
+  font-size: 17px;
+}
+
+.bundle-scene.is-very-dense .bundle-3d-label strong {
+  font-size: 15px;
 }
 
 .node-meter {
@@ -1510,6 +1557,14 @@ button.char-chip {
   overflow-wrap: anywhere;
 }
 
+.bundle-scene.is-dense .bundle-3d-label em {
+  font-size: 13px;
+}
+
+.bundle-scene.is-very-dense .bundle-3d-label em {
+  display: none;
+}
+
 .bundle-3d-label.is-active-reading {
   box-shadow:
     0 0 0 2px rgba(177, 119, 31, 0.2),
@@ -1524,42 +1579,6 @@ button.char-chip {
 
 .bundle-3d-label.is-muted-reading {
   opacity: 0.24;
-}
-
-.bundle-depth-axis {
-  position: absolute;
-  inset: auto 18px 16px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  pointer-events: none;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.bundle-depth-axis span:nth-child(2) {
-  text-align: center;
-}
-
-.bundle-depth-axis span:nth-child(3) {
-  text-align: right;
-}
-
-.bundle-vertical-axis {
-  position: absolute;
-  inset: 14px auto 14px 18px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  max-width: min(260px, 42%);
-  pointer-events: none;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.bundle-vertical-axis span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .bundle-path-list {
