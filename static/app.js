@@ -381,6 +381,7 @@ function renderNetworkStudy() {
   }
   $("#sourceSummaryBadge").textContent = `${network.total_characters || 0}자`;
   $("#branchCount").textContent = String(network.target_groups?.length || 0);
+  renderPronunciationLangControls(network);
   renderSourceSummary(network);
   renderMultiCharacters();
   renderPronunciationGraph(network);
@@ -479,6 +480,14 @@ function renderPronunciationGraph(network) {
   $("#pronunciationGraph").innerHTML = items.map((item) => pronunciationNetworkBlock(item)).join("");
 }
 
+function renderPronunciationLangControls(network) {
+  const target = $("#pronunciationLangControls");
+  if (!target) {
+    return;
+  }
+  target.innerHTML = graphLanguageControls(network.source_lang, "발음 네트워크 표시 언어");
+}
+
 function pronunciationNetworkItems(network) {
   const multi = (state.multiNetworks || []).filter(Boolean);
   if (multi.length > 1) {
@@ -529,7 +538,7 @@ function pronunciationNetworkBlock(item) {
       </div>
       ${filterChar ? networkFilterChip(filterChar, item.networkIndex ?? -1) : ""}
       ${pinned.length ? pinnedCharacterTray(pinned) : ""}
-      <div class="lane-graph" role="list" aria-label="pronunciation graph">
+      <div class="lane-graph" style="--lane-count:${Math.max(columns.length, 1)}" role="list" aria-label="pronunciation graph">
       ${columns
         .map(
           (column) => `
@@ -836,10 +845,10 @@ function bundleGraph(network, bundles) {
   `;
 }
 
-function graphLanguageControls(sourceLang) {
+function graphLanguageControls(sourceLang, label = "그래프 표시 언어") {
   const visible = visibleGraphLangSet(sourceLang);
   return `
-    <div class="graph-language-controls" aria-label="그래프 표시 언어">
+    <div class="graph-language-controls" aria-label="${escapeHTML(label)}">
       ${displayLangs
         .map((lang) => {
           const checked = visible.has(lang);

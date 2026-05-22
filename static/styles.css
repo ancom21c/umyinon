@@ -215,6 +215,29 @@ button:hover {
   gap: 8px;
 }
 
+.panel-lang-controls {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.panel-lang-controls .graph-language-controls {
+  justify-content: flex-end;
+  max-width: min(440px, 42vw);
+}
+
+.panel-lang-controls .graph-lang-chip {
+  min-height: 28px;
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
+.panel-lang-controls .graph-lang-chip span {
+  max-width: 86px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .panel-toggle {
   display: inline-grid;
   width: 30px;
@@ -964,8 +987,8 @@ button.char-chip {
 
 .lane-graph {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(var(--lane-count, 3), minmax(104px, 1fr));
+  gap: 7px;
   align-items: start;
 }
 
@@ -1009,11 +1032,11 @@ button.char-chip {
 
 .language-lane {
   display: grid;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 10px;
+  padding: 8px;
   background: var(--surface-2);
 }
 
@@ -1043,26 +1066,30 @@ button.char-chip {
   justify-content: space-between;
   gap: 8px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .lane-title strong {
+  min-width: 0;
   color: var(--text);
-  font-size: 14px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lane-nodes {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .reading-node-card {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 10px;
+  padding: 7px;
   background: #fff;
 }
 
@@ -1142,23 +1169,21 @@ button.char-chip {
 }
 
 .reading-node-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
 }
 
 .reading-node-head strong {
   min-width: 0;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
 .reading-node-head span {
-  flex: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
@@ -1185,19 +1210,19 @@ button.char-chip {
 
 .scrollable-char-row {
   align-content: flex-start;
-  max-height: 116px;
+  max-height: 104px;
   overflow-y: auto;
   padding: 2px 3px 2px 0;
   scrollbar-width: thin;
 }
 
 .node-char {
-  min-width: 34px;
-  height: 34px;
+  min-width: 30px;
+  height: 30px;
   padding: 0 4px;
   border-radius: 8px;
   font-family: "Noto Serif CJK KR", "Source Han Serif KR", serif;
-  font-size: 21px;
+  font-size: 19px;
   line-height: 1;
   background: var(--surface);
 }
@@ -2259,7 +2284,7 @@ button.char-chip {
   }
 
   .lane-graph {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(var(--lane-count, 3), minmax(96px, 1fr));
   }
 
   .source-summary-bar {
@@ -2331,6 +2356,14 @@ button.char-chip {
 
   .graph-language-controls {
     justify-content: flex-start;
+  }
+
+  .panel-lang-controls .graph-language-controls {
+    max-width: 100%;
+  }
+
+  .lane-graph {
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   }
 
   .bundle-scene {
