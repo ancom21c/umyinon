@@ -18,6 +18,7 @@ const state = {
   pinnedCharacters: new Set(),
   charPreviewCache: new Map(),
   charPreviewTimer: 0,
+  sourceHubPinned: false,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -75,6 +76,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.body.addEventListener("click", (event) => {
+    const closeButton = event.target.closest("[data-dialog-close]");
+    if (closeButton) {
+      closeCharacterDialog();
+      return;
+    }
     const panelToggle = event.target.closest("[data-panel-toggle]");
     if (panelToggle) {
       togglePanel(panelToggle);
@@ -101,6 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const charButton = event.target.closest("[data-char]");
     if (charButton) {
+      openCharacterDialog(charButton.dataset.char);
       loadCharacter(charButton.dataset.char);
       return;
     }
@@ -131,6 +138,18 @@ document.addEventListener("DOMContentLoaded", () => {
   document.body.addEventListener("pointerout", handleCharPreviewPointerOut);
   document.body.addEventListener("focusin", handleCharPreviewPointer);
   document.body.addEventListener("focusout", handleCharPreviewPointerOut);
+
+  const characterDialog = $("#characterDialog");
+  if (characterDialog) {
+    characterDialog.addEventListener("click", (event) => {
+      if (event.target === characterDialog) {
+        closeCharacterDialog();
+      }
+    });
+    characterDialog.addEventListener("close", () => {
+      document.body.classList.remove("dialog-open");
+    });
+  }
 
   runStudy($("#sourceLang").value, $("#searchInput").value.trim());
 });
@@ -256,6 +275,7 @@ async function loadCharacter(char, requestId = state.requestId) {
 function setNetworkLoading(sourceLang, query) {
   disposeBundleScene();
   hideCharacterPreview();
+  state.sourceHubPinned = false;
   state.lockedReadings = {};
   state.activeNetworkIndex = 0;
   state.networkCharFilters = new Map();
@@ -331,6 +351,7 @@ async function networkForReadingUnit(unit, sourceLang, fallbackNetwork = null) {
 }
 
 function setSourceLockedReadings(network) {
+  state.sourceHubPinned = false;
   state.lockedReadings = network
     ? {
         [network.source_lang]: network.source_reading_key || network.source_reading,
@@ -1635,6 +1656,7 @@ function toggleLockedReading(lang, key) {
   }
   if (lang === state.network.source_lang) {
     state.lockedReadings[lang] = key;
+    state.sourceHubPinned = true;
   } else if (state.lockedReadings[lang] === key) {
     delete state.lockedReadings[lang];
   } else {
@@ -1814,7 +1836,7 @@ function renderLockedCombo() {
     )
     .join("");
   const lockedTargets = Object.entries(locked).filter(([lang, key]) => key && lang !== state.network.source_lang).length;
-  const copy = lockedTargets ? `${chars.length}자 후보` : "";
+  const copy = lockedTargets ? `${chars.length}자 후보` : state.sourceHubPinned ? `${chars.length}자 대표` : "";
   box.innerHTML = `
     ${copy ? `<div class="locked-head"><span>${escapeHTML(copy)}</span></div>` : ""}
     <div class="locked-readings">${selectedReadings}</div>
@@ -1830,7 +1852,7 @@ function matchingLockedCharacters() {
   const locked = Object.entries(state.lockedReadings || {}).filter(([, key]) => key);
   const targetLocks = locked.filter(([lang]) => lang !== network.source_lang);
   if (!targetLocks.length) {
-    return [];
+    return state.sourceHubPinned ? sourceRepresentativeChars(network) : [];
   }
   let intersection = null;
   for (const [lang, key] of targetLocks) {
@@ -2265,6 +2287,48 @@ function clearCharacter() {
   $("#tagsAndNotes").innerHTML = `<div class="empty">목록/주석 없음</div>`;
   $("#relatedList").innerHTML = `<div class="empty">선택 대기</div>`;
   $("#network").innerHTML = `<div class="empty">선택 대기</div>`;
+}
+
+function openCharacterDialog(char = "") {
+  const dialog = $("#characterDialog");
+  if (!dialog) {
+    return;
+  }
+  if (char && state.detail?.character?.char !== char) {
+    renderCharacterLoading(char);
+  }
+  if (!dialog.open) {
+    if (typeof dialog.showModal === "function") {
+      dialog.showModal();
+    } else {
+      dialog.setAttribute("open", "");
+    }
+  }
+  document.body.classList.add("dialog-open");
+}
+
+function closeCharacterDialog() {
+  const dialog = $("#characterDialog");
+  if (!dialog) {
+    return;
+  }
+  if (dialog.open && typeof dialog.close === "function") {
+    dialog.close();
+  } else {
+    dialog.removeAttribute("open");
+    document.body.classList.remove("dialog-open");
+  }
+}
+
+function renderCharacterLoading(char) {
+  $("#glyph").textContent = char;
+  $("#codepoint").textContent = "";
+  $("#definition").textContent = "불러오는 중";
+  $("#characterMeta").innerHTML = "";
+  $("#readingCards").innerHTML = `<div class="empty">${escapeHTML(char)} 사전 정보를 불러오는 중</div>`;
+  $("#tagsAndNotes").innerHTML = `<div class="empty">목록/주석 대기</div>`;
+  $("#relatedList").innerHTML = `<div class="empty">형성자 추천 대기</div>`;
+  $("#network").innerHTML = `<div class="empty">음부 네트워크 대기</div>`;
 }
 
 async function handleCharPreviewPointer(event) {

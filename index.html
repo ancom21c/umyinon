@@ -103,8 +103,19 @@
             <div id="evolutionLanes" class="evolution-lanes"></div>
           </section>
         </section>
+      </section>
+    </main>
 
-        <aside class="study-sidebar">
+    <dialog id="characterDialog" class="character-dialog" aria-labelledby="characterDialogTitle">
+      <div class="character-dialog-surface">
+        <div class="character-dialog-title">
+          <div>
+            <span>한자 상세</span>
+            <h2 id="characterDialogTitle">사전 · 형성자 · 음부 네트워크</h2>
+          </div>
+          <button type="button" class="dialog-close" data-dialog-close aria-label="닫기">×</button>
+        </div>
+        <div class="character-dialog-grid">
           <section class="character-panel compact-character">
             <div class="character-head">
               <div id="glyph" class="glyph">定</div>
@@ -155,9 +166,9 @@
             </div>
             <div id="tagsAndNotes" class="tags-grid"></div>
           </section>
-        </aside>
-      </section>
-    </main>
+        </div>
+      </div>
+    </dialog>
 
     <script type="module" src="/static/app.js"></script>
   </body>
