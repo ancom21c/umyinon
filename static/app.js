@@ -2419,7 +2419,14 @@ function canonicalJapaneseKey(value) {
     .trim()
     .toLowerCase()
     .replace(/[ \t\n\r·.\-_/']/g, "");
-  return containsKanaText(cleaned) ? kanaToRomaji(cleaned) : cleaned;
+  return containsKanaText(cleaned) ? kanaToRomaji(cleaned) : normalizeJapaneseRomaji(cleaned);
+}
+
+function normalizeJapaneseRomaji(value) {
+  return String(value || "")
+    .replaceAll("shy", "sh")
+    .replaceAll("chy", "ch")
+    .replace(/(^|[^cs])hu/gu, "$1fu");
 }
 
 function romajiToKatakana(value) {
@@ -2430,7 +2437,9 @@ function romajiToKatakana(value) {
   const pairs = [
     ["kya", "キャ"], ["kyu", "キュ"], ["kyo", "キョ"],
     ["gya", "ギャ"], ["gyu", "ギュ"], ["gyo", "ギョ"],
+    ["shya", "シャ"], ["shyu", "シュ"], ["shyo", "ショ"],
     ["sha", "シャ"], ["shu", "シュ"], ["sho", "ショ"],
+    ["chya", "チャ"], ["chyu", "チュ"], ["chyo", "チョ"],
     ["cha", "チャ"], ["chu", "チュ"], ["cho", "チョ"],
     ["ja", "ジャ"], ["ju", "ジュ"], ["jo", "ジョ"],
     ["nya", "ニャ"], ["nyu", "ニュ"], ["nyo", "ニョ"],
@@ -2440,6 +2449,7 @@ function romajiToKatakana(value) {
     ["mya", "ミャ"], ["myu", "ミュ"], ["myo", "ミョ"],
     ["rya", "リャ"], ["ryu", "リュ"], ["ryo", "リョ"],
     ["shi", "シ"], ["chi", "チ"], ["tsu", "ツ"], ["fu", "フ"],
+    ["si", "シ"], ["ti", "チ"], ["tu", "ツ"], ["hu", "フ"],
     ["ka", "カ"], ["ki", "キ"], ["ku", "ク"], ["ke", "ケ"], ["ko", "コ"],
     ["ga", "ガ"], ["gi", "ギ"], ["gu", "グ"], ["ge", "ゲ"], ["go", "ゴ"],
     ["sa", "サ"], ["su", "ス"], ["se", "セ"], ["so", "ソ"],
