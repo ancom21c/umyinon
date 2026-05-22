@@ -1152,6 +1152,39 @@ button.char-chip {
   gap: 8px;
 }
 
+.study-token-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.study-token-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.study-token-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+
+.study-token-title strong {
+  font-family: "Noto Serif CJK KR", "Source Han Serif KR", serif;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.study-token-title span {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .bundle-board {
   grid-column: 1 / -1;
   display: grid;
@@ -2025,6 +2058,11 @@ button.char-chip {
 }
 
 .evolution-lanes {
+  display: grid;
+  gap: 12px;
+}
+
+.evolution-lane-grid {
   display: grid;
   gap: 10px;
 }

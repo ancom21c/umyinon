@@ -364,7 +364,8 @@ function renderNetworkStudy() {
   renderMultiCharacters();
   renderPronunciationGraph(network);
   renderBranchCards(network);
-  renderEvolutionLanes(network);
+  renderBranchInsightsForItems(pronunciationNetworkItems(network));
+  renderEvolutionLanesForItems(pronunciationNetworkItems(network));
 }
 
 function renderSourceSummary(network) {
@@ -544,7 +545,6 @@ function renderBranchCards(network) {
   const bundles = network.bundles || [];
   if (!groups.length && !bundles.length) {
     $("#branchCards").innerHTML = `<div class="empty">발음 갈래 없음</div>`;
-    renderBranchInsights(network, groups);
     disposeBundleScene();
     return;
   }
@@ -552,7 +552,6 @@ function renderBranchCards(network) {
   const hasSceneGraph = visibleBundles.length || groups.length;
   const bundleHTML = hasSceneGraph ? bundleGraph(network, visibleBundles) : "";
   $("#branchCards").innerHTML = bundleHTML || `<div class="empty">발음 집합 그래프 없음</div>`;
-  renderBranchInsights(network, groups);
   if (hasSceneGraph) {
     requestAnimationFrame(() => mountBundleScene(network, visibleBundles));
   } else {
@@ -560,17 +559,47 @@ function renderBranchCards(network) {
   }
 }
 
-function renderBranchInsights(network, groups) {
+function renderBranchInsightsForItems(items) {
   const target = $("#branchInsights");
   if (!target) {
     return;
   }
-  $("#branchInsightCount").textContent = String(groups.length || 0);
-  if (!groups.length) {
+  const sections = (items || []).filter(Boolean);
+  const totalGroups = sections.reduce((sum, item) => sum + (item.network?.target_groups?.length || 0), 0);
+  $("#branchInsightCount").textContent = String(totalGroups);
+  if (!sections.length || !totalGroups) {
     target.innerHTML = `<div class="empty">발음 갈래 없음</div>`;
     return;
   }
-  target.innerHTML = groups
+  target.innerHTML = sections
+    .map((item, index) => branchInsightSection(item, index, sections.length > 1))
+    .join("");
+}
+
+function branchInsightSection(item, index, showTitle) {
+  const network = item.network;
+  if (!network) {
+    return `
+      <section class="study-token-section">
+        ${showTitle ? studyTokenTitle(item, index) : ""}
+        <div class="empty">${escapeHTML(item.warning || "발음 갈래 없음")}</div>
+      </section>
+    `;
+  }
+  const groups = network.target_groups || [];
+  if (!groups.length) {
+    return `
+      <section class="study-token-section">
+        ${showTitle ? studyTokenTitle(item, index) : ""}
+        <div class="empty">발음 갈래 없음</div>
+      </section>
+    `;
+  }
+  return `
+    <section class="study-token-section">
+      ${showTitle ? studyTokenTitle(item, index) : ""}
+      <div class="branch-insight-grid">
+        ${groups
     .slice(0, 9)
     .map((group) => {
       const pct = network.total_characters
@@ -600,7 +629,10 @@ function renderBranchInsights(network, groups) {
         </section>
       `;
     })
-    .join("");
+    .join("")}
+      </div>
+    </section>
+  `;
 }
 
 function buildLanguageColumns(network, filterChar = "") {
@@ -2014,13 +2046,37 @@ function representativeCharsForGroup(group) {
   return chars.slice(0, 10);
 }
 
-function renderEvolutionLanes(network) {
-  const lanes = network.evolution_lanes || [];
-  if (!lanes.length) {
-    $("#evolutionLanes").innerHTML = `<div class="empty">변천 단서 없음</div>`;
+function renderEvolutionLanesForItems(items) {
+  const target = $("#evolutionLanes");
+  if (!target) {
     return;
   }
-  $("#evolutionLanes").innerHTML = lanes
+  const sections = (items || []).filter(Boolean);
+  const hasLanes = sections.some((item) => (item.network?.evolution_lanes || []).length);
+  if (!sections.length || !hasLanes) {
+    target.innerHTML = `<div class="empty">변천 단서 없음</div>`;
+    return;
+  }
+  target.innerHTML = sections
+    .map((item, index) => evolutionSection(item, index, sections.length > 1))
+    .join("");
+}
+
+function evolutionSection(item, index, showTitle) {
+  const lanes = item.network?.evolution_lanes || [];
+  if (!lanes.length) {
+    return `
+      <section class="study-token-section">
+        ${showTitle ? studyTokenTitle(item, index) : ""}
+        <div class="empty">${escapeHTML(item.warning || "변천 단서 없음")}</div>
+      </section>
+    `;
+  }
+  return `
+    <section class="study-token-section">
+      ${showTitle ? studyTokenTitle(item, index) : ""}
+      <div class="evolution-lane-grid">
+        ${lanes
     .map((lane) => {
       const stages = (lane.stages || [])
         .map((stage) => {
@@ -2042,7 +2098,23 @@ function renderEvolutionLanes(network) {
         </section>
       `;
     })
-    .join("");
+    .join("")}
+      </div>
+    </section>
+  `;
+}
+
+function studyTokenTitle(item, index) {
+  const network = item.network;
+  const label = item.char || item.reading || network?.source_reading || `#${index + 1}`;
+  const reading = item.reading || network?.source_reading || "";
+  const lang = network?.source_lang || state.network?.source_lang || "ko";
+  return `
+    <div class="study-token-title">
+      <strong>${escapeHTML(label)}</strong>
+      <span>${escapeHTML(formatLang(lang))}${reading ? ` ${escapeHTML(reading)}` : ""}</span>
+    </div>
+  `;
 }
 
 function renderCharacter() {
