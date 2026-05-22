@@ -1782,12 +1782,10 @@ function groupTitle(group) {
 }
 
 function readingDisplay(key, readings, lang) {
-  const values = compactReadingValues(lang, readings, key);
-  if (lang === "ja" && values.length) {
-    const kana = values.filter((value) => containsKanaText(value));
-    const romaji = values.filter((value) => !containsKanaText(value));
-    return [...kana, ...romaji].slice(0, 3).join(" / ");
+  if (lang === "ja") {
+    return japaneseReadingValues(key, readings).slice(0, 4).join(" / ") || key;
   }
+  const values = compactReadingValues(lang, readings, key);
   return values.slice(0, 4).join(" / ") || key;
 }
 
@@ -2218,8 +2216,8 @@ function displayReadingsFor(detail, lang) {
       bucket.push(reading.reading);
     }
   }
-  return [...groups.values()].map((group) => ({
-    value: [...group.kana, ...group.romaji].slice(0, 4).join(" / "),
+  return [...groups.entries()].map(([key, group]) => ({
+    value: japaneseReadingValues(key, [...group.kana, ...group.romaji]).slice(0, 4).join(" / "),
     label: "음독",
   }));
 }
@@ -2244,6 +2242,40 @@ function compactReadings(readings) {
     })
     .filter(Boolean)
     .join(" · ");
+}
+
+function japaneseReadingValues(key, readings) {
+  const values = [];
+  const seen = new Set();
+  for (const reading of readings || []) {
+    if (!reading || seen.has(reading)) {
+      continue;
+    }
+    seen.add(reading);
+    values.push(reading);
+  }
+  const kana = values.filter((value) => containsKanaText(value));
+  const romaji = values.filter((value) => !containsKanaText(value));
+  const canonical =
+    key ||
+    romaji.map((value) => canonicalJapaneseKey(value)).find(Boolean) ||
+    kana.map((value) => canonicalJapaneseKey(value)).find(Boolean) ||
+    "";
+  const out = [];
+  const add = (value) => {
+    if (value && !out.includes(value)) {
+      out.push(value);
+    }
+  };
+  kana.forEach(add);
+  if (!kana.length) {
+    add(romajiToKatakana(canonical));
+  }
+  romaji.forEach(add);
+  if (!romaji.length) {
+    add(canonical);
+  }
+  return out;
 }
 
 function compactReadingValues(lang, readings, fallbackKey) {
@@ -2388,6 +2420,57 @@ function canonicalJapaneseKey(value) {
     .toLowerCase()
     .replace(/[ \t\n\r·.\-_/']/g, "");
   return containsKanaText(cleaned) ? kanaToRomaji(cleaned) : cleaned;
+}
+
+function romajiToKatakana(value) {
+  let text = canonicalJapaneseKey(value);
+  if (!/^[a-z]+$/u.test(text)) {
+    return "";
+  }
+  const pairs = [
+    ["kya", "キャ"], ["kyu", "キュ"], ["kyo", "キョ"],
+    ["gya", "ギャ"], ["gyu", "ギュ"], ["gyo", "ギョ"],
+    ["sha", "シャ"], ["shu", "シュ"], ["sho", "ショ"],
+    ["cha", "チャ"], ["chu", "チュ"], ["cho", "チョ"],
+    ["ja", "ジャ"], ["ju", "ジュ"], ["jo", "ジョ"],
+    ["nya", "ニャ"], ["nyu", "ニュ"], ["nyo", "ニョ"],
+    ["hya", "ヒャ"], ["hyu", "ヒュ"], ["hyo", "ヒョ"],
+    ["bya", "ビャ"], ["byu", "ビュ"], ["byo", "ビョ"],
+    ["pya", "ピャ"], ["pyu", "ピュ"], ["pyo", "ピョ"],
+    ["mya", "ミャ"], ["myu", "ミュ"], ["myo", "ミョ"],
+    ["rya", "リャ"], ["ryu", "リュ"], ["ryo", "リョ"],
+    ["shi", "シ"], ["chi", "チ"], ["tsu", "ツ"], ["fu", "フ"],
+    ["ka", "カ"], ["ki", "キ"], ["ku", "ク"], ["ke", "ケ"], ["ko", "コ"],
+    ["ga", "ガ"], ["gi", "ギ"], ["gu", "グ"], ["ge", "ゲ"], ["go", "ゴ"],
+    ["sa", "サ"], ["su", "ス"], ["se", "セ"], ["so", "ソ"],
+    ["za", "ザ"], ["ji", "ジ"], ["zu", "ズ"], ["ze", "ゼ"], ["zo", "ゾ"],
+    ["ta", "タ"], ["te", "テ"], ["to", "ト"],
+    ["da", "ダ"], ["de", "デ"], ["do", "ド"],
+    ["na", "ナ"], ["ni", "ニ"], ["nu", "ヌ"], ["ne", "ネ"], ["no", "ノ"],
+    ["ha", "ハ"], ["hi", "ヒ"], ["he", "ヘ"], ["ho", "ホ"],
+    ["ba", "バ"], ["bi", "ビ"], ["bu", "ブ"], ["be", "ベ"], ["bo", "ボ"],
+    ["pa", "パ"], ["pi", "ピ"], ["pu", "プ"], ["pe", "ペ"], ["po", "ポ"],
+    ["ma", "マ"], ["mi", "ミ"], ["mu", "ム"], ["me", "メ"], ["mo", "モ"],
+    ["ya", "ヤ"], ["yu", "ユ"], ["yo", "ヨ"],
+    ["ra", "ラ"], ["ri", "リ"], ["ru", "ル"], ["re", "レ"], ["ro", "ロ"],
+    ["wa", "ワ"], ["wo", "ヲ"],
+    ["a", "ア"], ["i", "イ"], ["u", "ウ"], ["e", "エ"], ["o", "オ"],
+  ];
+  let out = "";
+  while (text) {
+    if (text[0] === "n" && (!text[1] || !/[aeiouy]/u.test(text[1]))) {
+      out += "ン";
+      text = text.slice(1);
+      continue;
+    }
+    const pair = pairs.find(([romaji]) => text.startsWith(romaji));
+    if (!pair) {
+      return "";
+    }
+    out += pair[1];
+    text = text.slice(pair[0].length);
+  }
+  return out;
 }
 
 function containsKanaText(value) {
