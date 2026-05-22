@@ -628,6 +628,102 @@ button.char-chip {
   display: none;
 }
 
+.reading-char-picker {
+  position: fixed;
+  z-index: 6200;
+  display: grid;
+  gap: 8px;
+  max-height: min(430px, calc(100vh - 24px));
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 22px 58px rgba(31, 41, 55, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.reading-char-picker[hidden] {
+  display: none;
+}
+
+.reading-char-picker.above {
+  transform: translateY(-100%);
+}
+
+.reading-picker-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reading-picker-head div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.reading-picker-head span,
+.reading-picker-meta {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.reading-picker-head strong {
+  min-width: 0;
+  font-size: 18px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.reading-picker-head button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.reading-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
+
+.reading-picker-char {
+  display: grid;
+  min-width: 0;
+  min-height: 54px;
+  gap: 3px;
+  justify-items: center;
+  padding: 6px 4px;
+  background: var(--surface-2);
+}
+
+.reading-picker-char span {
+  font-family: "Noto Serif CJK KR", "Source Han Serif KR", serif;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.reading-picker-char small {
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .char-preview-head {
   display: flex;
   align-items: baseline;
@@ -1086,11 +1182,14 @@ button.char-chip {
 .reading-node-card {
   display: grid;
   gap: 6px;
+  width: 100%;
+  min-height: 54px;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 7px;
   background: #fff;
+  text-align: left;
 }
 
 .reading-node-card.source {
@@ -1176,7 +1275,7 @@ button.char-chip {
 
 .reading-node-head strong {
   min-width: 0;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
@@ -1188,7 +1287,7 @@ button.char-chip {
 }
 
 .reading-node-meter {
-  height: 5px;
+  height: 3px;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(31, 41, 55, 0.08);

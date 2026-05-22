@@ -31,6 +31,14 @@ const langLabels = {
   vi: "베트남어 (Tiếng Việt)",
 };
 
+const compactLangLabels = {
+  ko: "한국어",
+  ja: "日本語",
+  zh: "普通话",
+  yue: "粵語",
+  vi: "Tiếng Việt",
+};
+
 const systemLabels = {
   hangul: "한글",
   romanized: "로마자",
@@ -81,6 +89,23 @@ document.addEventListener("DOMContentLoaded", () => {
       closeCharacterDialog();
       return;
     }
+    const pickerCloseButton = event.target.closest("[data-reading-picker-close]");
+    if (pickerCloseButton) {
+      hideReadingCharPicker();
+      return;
+    }
+    const pickerCharButton = event.target.closest("[data-picker-char]");
+    if (pickerCharButton) {
+      chooseReadingPickerChar(pickerCharButton);
+      return;
+    }
+    if (event.target.closest("#readingCharPicker")) {
+      return;
+    }
+    const readingCard = event.target.closest(".reading-node-card[data-reading-lang][data-reading-key]");
+    if (!readingCard) {
+      hideReadingCharPicker();
+    }
     const panelToggle = event.target.closest("[data-panel-toggle]");
     if (panelToggle) {
       togglePanel(panelToggle);
@@ -109,6 +134,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (charButton) {
       openCharacterDialog(charButton.dataset.char);
       loadCharacter(charButton.dataset.char);
+      return;
+    }
+    if (readingCard) {
+      toggleLockedReading(readingCard.dataset.readingLang, readingCard.dataset.readingKey);
+      openReadingCharPicker(readingCard);
       return;
     }
     const readingButton = event.target.closest("[data-reading-lang][data-reading-key]");
@@ -275,6 +305,7 @@ async function loadCharacter(char, requestId = state.requestId) {
 function setNetworkLoading(sourceLang, query) {
   disposeBundleScene();
   hideCharacterPreview();
+  hideReadingCharPicker();
   state.sourceHubPinned = false;
   state.lockedReadings = {};
   state.activeNetworkIndex = 0;
@@ -523,7 +554,7 @@ function pronunciationNetworkBlock(item) {
       <section class="pronunciation-network-block" data-pronunciation-network-index="${item.networkIndex ?? -1}">
         <div class="pronunciation-network-head">
           <h3>${escapeHTML(item.char || firstNetworkChar(item.network) || item.network.source_reading)}</h3>
-          <span>${escapeHTML(formatLang(item.network.source_lang))} ${escapeHTML(item.reading || item.network.source_reading)}</span>
+          <span>${escapeHTML(formatCompactLang(item.network.source_lang))} ${escapeHTML(item.reading || item.network.source_reading)}</span>
         </div>
         <div class="empty">연결된 발음 갈래 없음</div>
       </section>
@@ -534,7 +565,7 @@ function pronunciationNetworkBlock(item) {
     <section class="pronunciation-network-block" data-pronunciation-network-index="${item.networkIndex ?? -1}">
       <div class="pronunciation-network-head">
         <h3>${escapeHTML(item.char || firstNetworkChar(item.network) || item.network.source_reading)}</h3>
-        <span>${escapeHTML(formatLang(item.network.source_lang))} ${escapeHTML(item.reading || item.network.source_reading)} · ${item.network.total_characters || 0}자</span>
+        <span>${escapeHTML(formatCompactLang(item.network.source_lang))} ${escapeHTML(item.reading || item.network.source_reading)} · ${item.network.total_characters || 0}자</span>
       </div>
       ${filterChar ? networkFilterChip(filterChar, item.networkIndex ?? -1) : ""}
       ${pinned.length ? pinnedCharacterTray(pinned) : ""}
@@ -544,7 +575,7 @@ function pronunciationNetworkBlock(item) {
           (column) => `
             <section class="language-lane ${column.lang}" role="listitem">
               <div class="lane-title">
-                <strong>${escapeHTML(formatLang(column.lang))}</strong>
+                <strong>${escapeHTML(formatCompactLang(column.lang))}</strong>
                 <span>${column.nodes.length}갈래</span>
               </div>
               <div class="lane-nodes">
@@ -707,35 +738,126 @@ function buildLanguageColumns(network, filterChar = "") {
 
 function readingNode(node, total, filterChar = "") {
   const pct = filterChar ? 100 : total ? Math.round((node.count / total) * 100) : 0;
-  const shownChars = (node.characters || []).slice(0, 96);
-  const chars = shownChars
+  return `
+    <button
+      type="button"
+      class="reading-node-card ${node.lang} ${node.source ? "source" : ""}"
+      data-reading-lang="${escapeHTML(node.lang)}"
+      data-reading-key="${escapeHTML(node.key)}"
+      aria-label="${escapeHTML(formatCompactLang(node.lang))} ${escapeHTML(readingDisplay(node.key, node.display, node.lang))} ${node.count}자"
+    >
+      <div class="reading-node-head">
+        <strong>${escapeHTML(readingDisplay(node.key, node.display, node.lang))}</strong>
+        <span>${escapeHTML(formatCompactLang(node.lang))} · ${node.count}자${node.source ? "" : ` · ${pct}%`}</span>
+      </div>
+      <div class="reading-node-meter"><span style="width:${Math.min(Math.max(pct, node.source ? 100 : 6), 100)}%"></span></div>
+    </button>
+  `;
+}
+
+function openReadingCharPicker(trigger) {
+  const network = networkForReadingElement(trigger);
+  if (!network) {
+    return;
+  }
+  const lang = trigger.dataset.readingLang || "";
+  const key = trigger.dataset.readingKey || "";
+  const block = trigger.closest("[data-pronunciation-network-index]");
+  const networkIndex = Number(block?.dataset.pronunciationNetworkIndex ?? -1);
+  const characters = charactersForReadingPicker(network, lang, key).slice(0, 48);
+  const picker = ensureReadingCharPicker();
+  picker.dataset.networkIndex = String(networkIndex);
+  picker.innerHTML = renderReadingCharPicker(network, lang, key, characters);
+  positionReadingCharPicker(picker, trigger);
+  picker.hidden = false;
+}
+
+function ensureReadingCharPicker() {
+  let picker = $("#readingCharPicker");
+  if (!picker) {
+    picker = document.createElement("aside");
+    picker.id = "readingCharPicker";
+    picker.className = "reading-char-picker";
+    picker.hidden = true;
+    document.body.appendChild(picker);
+  }
+  return picker;
+}
+
+function renderReadingCharPicker(network, lang, key, characters) {
+  const charHTML = characters
     .map((char) => {
       const value = char.char || char;
-      const pinned = state.pinnedCharacters.has(value);
-      const filtered = filterChar && value === filterChar;
       return `
-        <button class="node-char ${pinned ? "is-pinned-char" : ""} ${filtered ? "is-filter-char" : ""}" type="button" data-char="${escapeHTML(value)}" data-pin-char="${escapeHTML(value)}" aria-pressed="${pinned ? "true" : "false"}">
-          ${escapeHTML(value)}
+        <button class="reading-picker-char" type="button" data-picker-char="${escapeHTML(value)}" data-char="${escapeHTML(value)}">
+          <span>${escapeHTML(value)}</span>
+          <small>${escapeHTML(shortDefinition(char.definition))}</small>
         </button>
       `;
     })
     .join("");
-  const more = node.count > shownChars.length ? `<span class="char-more">+${node.count - shownChars.length}</span>` : "";
   return `
-    <article
-      class="reading-node-card ${node.lang} ${node.source ? "source" : ""}"
-      data-reading-lang="${escapeHTML(node.lang)}"
-      data-reading-key="${escapeHTML(node.key)}"
-      tabindex="0"
-    >
-      <div class="reading-node-head">
-        <strong>${escapeHTML(readingDisplay(node.key, node.display, node.lang))}</strong>
-        <span>${node.count}자${node.source ? "" : ` · ${pct}%`}</span>
+    <div class="reading-picker-head">
+      <div>
+        <span>${escapeHTML(formatCompactLang(lang))}</span>
+        <strong>${escapeHTML(readingDisplayForNetwork(network, lang, key))}</strong>
       </div>
-      <div class="reading-node-meter"><span style="width:${Math.min(Math.max(pct, node.source ? 100 : 6), 100)}%"></span></div>
-      <div class="node-char-row scrollable-char-row">${chars}${more || ""}${chars ? "" : `<span class="muted">대표 글자 없음</span>`}</div>
-    </article>
+      <button type="button" data-reading-picker-close aria-label="닫기">×</button>
+    </div>
+    <div class="reading-picker-meta">${characters.length}자 후보</div>
+    <div class="reading-picker-grid">${charHTML || `<span class="muted">대표 한자 없음</span>`}</div>
   `;
+}
+
+function positionReadingCharPicker(picker, target) {
+  const rect = target.getBoundingClientRect();
+  const width = Math.min(320, window.innerWidth - 24);
+  const left = Math.min(Math.max(12, rect.left + rect.width / 2 - width / 2), window.innerWidth - width - 12);
+  const belowTop = rect.bottom + 10;
+  const aboveTop = rect.top - 10;
+  picker.style.width = `${width}px`;
+  picker.style.left = `${left}px`;
+  picker.style.top = `${belowTop}px`;
+  picker.classList.remove("above");
+  requestAnimationFrame(() => {
+    const height = picker.offsetHeight || 240;
+    if (belowTop + height > window.innerHeight - 12 && aboveTop - height > 12) {
+      picker.style.top = `${aboveTop}px`;
+      picker.classList.add("above");
+    }
+  });
+}
+
+function chooseReadingPickerChar(button) {
+  const char = button.dataset.pickerChar || "";
+  if (!char) {
+    return;
+  }
+  const picker = button.closest("#readingCharPicker");
+  const index = Number(picker?.dataset.networkIndex ?? -1);
+  setNetworkCharFilter(index, char);
+  hideReadingCharPicker();
+  openCharacterDialog(char);
+  loadCharacter(char);
+}
+
+function hideReadingCharPicker() {
+  const picker = $("#readingCharPicker");
+  if (picker) {
+    picker.hidden = true;
+  }
+}
+
+function charactersForReadingPicker(network, lang, key) {
+  const details = characterDetailsFromNetwork(network);
+  if (lang === network.source_lang && key === (network.source_reading_key || network.source_reading)) {
+    return sourceCharactersForNetwork(network, details);
+  }
+  const values = [];
+  for (const group of groupsForReading(network, lang, key)) {
+    values.push(...charactersForReadingGroup(group, details));
+  }
+  return uniqueCharacters(values).slice(0, 120);
 }
 
 function pinnedCharacterTray(chars) {
@@ -861,7 +983,7 @@ function graphLanguageControls(sourceLang, label = "그래프 표시 언어") {
                 ${checked ? "checked" : ""}
                 ${isSource ? "disabled" : ""}
               />
-              <span>${escapeHTML(formatLang(lang))}</span>
+              <span>${escapeHTML(formatCompactLang(lang))}</span>
             </label>
           `;
         })
@@ -922,7 +1044,7 @@ function bundleNode(reading, lang) {
       data-reading-lang="${escapeHTML(lang)}"
       data-reading-key="${escapeHTML(key)}"
     >
-      <small>${escapeHTML(formatLang(lang))}</small>
+      <small>${escapeHTML(formatCompactLang(lang))}</small>
       <strong>${escapeHTML(readingDisplay(key, reading?.display_readings || [], lang))}</strong>
     </button>
   `;
@@ -1611,7 +1733,7 @@ function bundleReadingCell(reading, lang) {
       data-reading-key="${escapeHTML(reading?.reading_key || "")}"
       tabindex="0"
     >
-      <small>${escapeHTML(formatLang(lang))}</small>
+      <small>${escapeHTML(formatCompactLang(lang))}</small>
       <strong>${escapeHTML(readingDisplay(reading?.reading_key || "", reading?.display_readings || [], lang))}</strong>
     </span>
   `;
@@ -1828,9 +1950,9 @@ function renderLockedCombo() {
     .map((lang) => {
       const key = locked[lang];
       if (!key) {
-        return `<span class="locked-reading empty">${escapeHTML(formatLang(lang))}</span>`;
+        return `<span class="locked-reading empty">${escapeHTML(formatCompactLang(lang))}</span>`;
       }
-      return `<span class="locked-reading ${lang}">${escapeHTML(formatLang(lang))} <strong>${escapeHTML(lockedReadingDisplay(lang, key))}</strong></span>`;
+      return `<span class="locked-reading ${lang}">${escapeHTML(formatCompactLang(lang))} <strong>${escapeHTML(lockedReadingDisplay(lang, key))}</strong></span>`;
     })
     .join("");
   const chars = matchingLockedCharacters().slice(0, 16);
@@ -1900,14 +2022,18 @@ function characterDetailsFromNetwork(network) {
 }
 
 function lockedReadingDisplay(lang, key) {
-  const bundles = state.network?.bundles || [];
-  for (const bundle of bundles) {
+  return readingDisplayForNetwork(state.network, lang, key);
+}
+
+function readingDisplayForNetwork(network, lang, key) {
+  const networkBundles = network?.bundles || [];
+  for (const bundle of networkBundles) {
     const reading = bundle?.[lang];
     if (reading?.reading_key === key) {
       return readingDisplay(key, reading.display_readings || [], lang);
     }
   }
-  for (const group of state.network?.target_groups || []) {
+  for (const group of network?.target_groups || []) {
     if (group.target_lang === lang && group.target_reading_key === key) {
       return readingDisplay(key, group.display_readings || [], lang);
     }
@@ -2924,6 +3050,10 @@ function formatSystem(system) {
 
 function formatLang(lang) {
   return langLabels[lang] || lang;
+}
+
+function formatCompactLang(lang) {
+  return compactLangLabels[lang] || formatLang(lang);
 }
 
 function formatTag(tag) {
