@@ -1399,6 +1399,57 @@ button.char-chip {
   pointer-events: none;
 }
 
+.bundle-label-link {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.22;
+  pointer-events: none;
+  transform-origin: 0 50%;
+}
+
+.bundle-label-link.zh {
+  color: var(--red);
+}
+
+.bundle-label-link.ko {
+  color: var(--green);
+}
+
+.bundle-label-link.ja {
+  color: var(--blue);
+}
+
+.bundle-label-link.yue {
+  color: var(--violet);
+}
+
+.bundle-label-link.vi {
+  color: var(--amber);
+}
+
+.bundle-label-link.source {
+  opacity: 0.16;
+}
+
+.bundle-label-link.is-active-reading,
+.bundle-label-link.is-locked-reading {
+  height: 3px;
+  opacity: 0.62;
+}
+
+.bundle-label-link.is-linked-reading {
+  opacity: 0.42;
+}
+
+.bundle-label-link.is-muted-reading {
+  opacity: 0.05;
+}
+
 .bundle-3d-label {
   position: absolute;
   display: grid;

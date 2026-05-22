@@ -992,8 +992,11 @@ function mountBundleScene(network, bundles) {
       <i class="node-meter" aria-hidden="true"></i>
       <em>${escapeHTML(node.chars.slice(0, charLimit).join(" "))}</em>
     `;
+    const labelLine = document.createElement("span");
+    labelLine.className = `bundle-label-link ${node.lang}${node.source ? " source" : ""}`;
+    labelLayer.appendChild(labelLine);
     labelLayer.appendChild(label);
-    nodeObjects.set(node.id, { mesh, ring, wire, label, node });
+    nodeObjects.set(node.id, { mesh, ring, wire, label, labelLine, node });
   }
 
   const resize = () => {
@@ -1299,60 +1302,136 @@ function mergeDisplayReadings(node, readings) {
 function positionBundleLabels(container, camera, nodeObjects) {
   const width = container.clientWidth || 1;
   const height = container.clientHeight || 1;
-  const narrow = width < 620;
+  const narrow = width < 560;
   const items = [...nodeObjects.values()];
-  const sideBuckets = new Map();
+  const vector = new THREE.Vector3();
+  const placed = [];
   for (const item of items) {
-    const side = item.node.side || "center";
-    if (!sideBuckets.has(side)) {
-      sideBuckets.set(side, []);
+    if (narrow && !item.node.source && (item.node.sideRank ?? 0) > 0) {
+      item.label.style.display = "none";
+      if (item.labelLine) {
+        item.labelLine.style.display = "none";
+      }
+      continue;
     }
-    sideBuckets.get(side).push(item);
-  }
-  for (const bucket of sideBuckets.values()) {
-    bucket.sort((a, b) => (a.node.sideRank ?? 0) - (b.node.sideRank ?? 0) || b.node.count - a.node.count);
+    item.mesh.getWorldPosition(vector);
+    vector.project(camera);
+    const nodeX = (vector.x * 0.5 + 0.5) * width;
+    const nodeY = (-vector.y * 0.5 + 0.5) * height;
+    const labelWidth = item.label.offsetWidth || 112;
+    const labelHeight = item.label.offsetHeight || 72;
+    placed.push({
+      ...item,
+      labelHeight,
+      labelWidth,
+      nodeX,
+      nodeY,
+      ...projectedLabelPosition(item.node.side, nodeX, nodeY, labelWidth, labelHeight),
+    });
   }
 
-  const marginX = narrow ? 76 : 104;
-  const topY = narrow ? 88 : 102;
-  const bottomY = height - (narrow ? 78 : 92);
-  for (const item of items) {
-    const { label, node } = item;
-    label.style.display = "";
-    const bucket = sideBuckets.get(node.side || "center") || [item];
-    const index = bucket.indexOf(item);
-    const count = Math.max(bucket.length, 1);
-    const { x, y } = labelLanePosition(node.side, index, count, width, height, marginX, topY, bottomY);
-    label.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
-    label.style.zIndex = node.source ? "2200" : String(1200 - index);
+  resolveProjectedLabelCollisions(placed, width, height);
+  for (const item of placed) {
+    item.label.style.display = "";
+    item.label.style.transform = `translate(-50%, -50%) translate(${item.x}px, ${item.y}px)`;
+    item.label.style.zIndex = item.node.source ? "2200" : String(Math.round(1400 - item.nodeY));
+    positionLabelLink(item);
   }
 }
 
-function labelLanePosition(side, index, count, width, height, marginX, topY, bottomY) {
-  const middleTop = topY + 98;
-  const middleBottom = bottomY - 98;
-  const verticalTop = middleTop < middleBottom ? middleTop : topY + 42;
-  const verticalBottom = middleTop < middleBottom ? middleBottom : bottomY - 42;
+function projectedLabelPosition(side, nodeX, nodeY, labelWidth, labelHeight) {
+  const gap = 18;
   if (side === "center") {
-    return { x: width / 2, y: height / 2 };
+    return { x: nodeX, y: nodeY - labelHeight * 0.52 };
   }
   if (side === "left" || side === "right") {
     return {
-      x: side === "left" ? marginX : width - marginX,
-      y: distributedPosition(index, count, verticalTop, verticalBottom),
+      x: nodeX + (side === "left" ? -1 : 1) * (labelWidth / 2 + gap),
+      y: nodeY,
     };
   }
   return {
-    x: distributedPosition(index, count, marginX + 18, width - marginX - 18),
-    y: side === "top" ? topY : bottomY,
+    x: nodeX,
+    y: nodeY + (side === "top" ? -1 : 1) * (labelHeight / 2 + gap),
   };
 }
 
-function distributedPosition(index, count, start, end) {
-  if (count <= 1) {
-    return (start + end) / 2;
+function resolveProjectedLabelCollisions(items, width, height) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = item.node.side || "center";
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key).push(item);
   }
-  return start + ((end - start) * index) / (count - 1);
+  for (const [side, group] of groups.entries()) {
+    if (side === "left" || side === "right") {
+      resolveVerticalLabelStack(group, height);
+    } else if (side === "top" || side === "bottom") {
+      resolveHorizontalLabelStack(group, width);
+    }
+  }
+  for (const item of items) {
+    clampProjectedLabel(item, width, height);
+  }
+}
+
+function resolveVerticalLabelStack(items, height) {
+  items.sort((a, b) => a.y - b.y);
+  for (let index = 1; index < items.length; index++) {
+    const previous = items[index - 1];
+    const current = items[index];
+    const minY = previous.y + previous.labelHeight / 2 + current.labelHeight / 2 + 8;
+    if (current.y < minY) {
+      current.y = minY;
+    }
+  }
+  const overflow = items.length ? items[items.length - 1].y + items[items.length - 1].labelHeight / 2 - (height - 14) : 0;
+  if (overflow > 0) {
+    for (const item of items) {
+      item.y -= overflow;
+    }
+  }
+}
+
+function resolveHorizontalLabelStack(items, width) {
+  items.sort((a, b) => a.x - b.x);
+  for (let index = 1; index < items.length; index++) {
+    const previous = items[index - 1];
+    const current = items[index];
+    const minX = previous.x + previous.labelWidth / 2 + current.labelWidth / 2 + 8;
+    if (current.x < minX) {
+      current.x = minX;
+    }
+  }
+  const overflow = items.length ? items[items.length - 1].x + items[items.length - 1].labelWidth / 2 - (width - 14) : 0;
+  if (overflow > 0) {
+    for (const item of items) {
+      item.x -= overflow;
+    }
+  }
+}
+
+function clampProjectedLabel(item, width, height) {
+  item.x = Math.min(Math.max(item.labelWidth / 2 + 14, item.x), width - item.labelWidth / 2 - 14);
+  item.y = Math.min(Math.max(item.labelHeight / 2 + 14, item.y), height - item.labelHeight / 2 - 14);
+}
+
+function positionLabelLink(item) {
+  const dx = item.x - item.nodeX;
+  const dy = item.y - item.nodeY;
+  const length = Math.hypot(dx, dy);
+  if (!item.labelLine || length < 10) {
+    if (item.labelLine) {
+      item.labelLine.style.display = "none";
+    }
+    return;
+  }
+  item.labelLine.style.display = "";
+  item.labelLine.style.width = `${length}px`;
+  item.labelLine.style.transform = `translate(${item.nodeX}px, ${item.nodeY}px) rotate(${Math.atan2(dy, dx)}rad)`;
+  item.labelLine.style.zIndex = item.node.source ? "1000" : "900";
 }
 
 function updateBundleSceneActivation(lang = "", key = "") {
@@ -1375,6 +1454,10 @@ function updateBundleSceneActivation(lang = "", key = "") {
     item.label.classList.toggle("is-linked-reading", isLinked && !isSelected);
     item.label.classList.toggle("is-muted-reading", muted);
     item.label.classList.toggle("is-locked-reading", isLocked);
+    item.labelLine?.classList.toggle("is-active-reading", isSelected);
+    item.labelLine?.classList.toggle("is-linked-reading", isLinked && !isSelected);
+    item.labelLine?.classList.toggle("is-muted-reading", muted);
+    item.labelLine?.classList.toggle("is-locked-reading", isLocked);
     item.mesh.material.opacity = muted ? 0.22 : isSelected ? 1 : isLocked ? 0.98 : isLinked ? 0.94 : 0.86;
     item.mesh.material.emissiveIntensity = isSelected ? 0.72 : isLocked ? 0.48 : isLinked ? 0.32 : 0.12;
     item.ring.material.opacity = muted ? 0.07 : isSelected ? 0.86 : isLocked ? 0.64 : isLinked ? 0.44 : 0.22;
