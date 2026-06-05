@@ -1,6 +1,10 @@
 import * as THREE from "./vendor/three.module.js";
 import {
+  activeNetworkIndexForReadingAction,
   isCurrentStudyRequest,
+  normalizePinyinOrthography,
+  normalizeSuperscriptToneDigits,
+  shouldMountBundleScene,
   shouldApplyCharacterLoadResult,
   shouldApplyCharacterPreviewResult,
   shouldApplyStudyError,
@@ -16,6 +20,8 @@ const state = {
   related: [],
   requestId: 0,
   bundleScene: null,
+  bundleSceneMountFrame: 0,
+  bundleSceneRenderId: 0,
   lockedReadings: {},
   activeNetworkIndex: 0,
   visibleGraphLangs: new Set(["ko", "ja", "zh", "yue", "vi"]),
@@ -142,13 +148,15 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     if (readingCard) {
-      toggleLockedReading(readingCard.dataset.readingLang, readingCard.dataset.readingKey);
-      openReadingCharPicker(readingCard);
+      const activeReadingCard = activateNetworkForReadingElement(readingCard);
+      toggleLockedReading(activeReadingCard.dataset.readingLang, activeReadingCard.dataset.readingKey);
+      openReadingCharPicker(activeReadingCard);
       return;
     }
     const readingButton = event.target.closest("[data-reading-lang][data-reading-key]");
     if (readingButton) {
-      toggleLockedReading(readingButton.dataset.readingLang, readingButton.dataset.readingKey);
+      const activeReadingButton = activateNetworkForReadingElement(readingButton);
+      toggleLockedReading(activeReadingButton.dataset.readingLang, activeReadingButton.dataset.readingKey);
       return;
     }
   });
@@ -637,6 +645,7 @@ function networkFilterChip(char, networkIndex) {
 }
 
 function renderBranchCards(network) {
+  const renderId = ++state.bundleSceneRenderId;
   const groups = network.target_groups || [];
   const bundles = network.bundles || [];
   if (!groups.length && !bundles.length) {
@@ -649,7 +658,14 @@ function renderBranchCards(network) {
   const bundleHTML = hasSceneGraph ? bundleGraph(network, visibleBundles) : "";
   $("#branchCards").innerHTML = bundleHTML || `<div class="empty">발음 집합 그래프 없음</div>`;
   if (hasSceneGraph) {
-    requestAnimationFrame(() => mountBundleScene(network, visibleBundles));
+    cancelPendingBundleSceneMount();
+    state.bundleSceneMountFrame = requestAnimationFrame(() => {
+      state.bundleSceneMountFrame = 0;
+      if (!shouldMountBundleScene({ currentRenderId: state.bundleSceneRenderId, renderId })) {
+        return;
+      }
+      mountBundleScene(network, visibleBundles);
+    });
   } else {
     disposeBundleScene();
   }
@@ -1280,6 +1296,7 @@ function mountBundleScene(network, bundles) {
 }
 
 function disposeBundleScene() {
+  cancelPendingBundleSceneMount();
   const active = state.bundleScene;
   if (!active) {
     return;
@@ -1301,6 +1318,13 @@ function disposeBundleScene() {
     active.labelLayer.innerHTML = "";
   }
   state.bundleScene = null;
+}
+
+function cancelPendingBundleSceneMount() {
+  if (state.bundleSceneMountFrame) {
+    cancelAnimationFrame(state.bundleSceneMountFrame);
+    state.bundleSceneMountFrame = 0;
+  }
 }
 
 function buildBundleSceneModel(network, bundles) {
@@ -1872,6 +1896,35 @@ function networkForReadingElement(element) {
     return state.multiNetworks?.[index]?.network || state.network;
   }
   return state.network;
+}
+
+function activateNetworkForReadingElement(element) {
+  const block = element.closest("[data-pronunciation-network-index]");
+  const elementIndex = Number(block?.dataset.pronunciationNetworkIndex ?? -1);
+  const nextIndex = activeNetworkIndexForReadingAction({
+    currentActiveNetworkIndex: state.activeNetworkIndex,
+    elementNetworkIndex: elementIndex,
+    hasElementNetwork: Boolean(state.multiNetworks?.[elementIndex]?.network),
+  });
+  if (nextIndex === state.activeNetworkIndex) {
+    return element;
+  }
+
+  const item = state.multiNetworks[nextIndex];
+  state.activeNetworkIndex = nextIndex;
+  state.network = item.network;
+  setSourceLockedReadings(item.network);
+  renderNetworkStudy();
+  return findReadingElementInNetwork(nextIndex, element.dataset.readingLang, element.dataset.readingKey) || element;
+}
+
+function findReadingElementInNetwork(index, lang, key) {
+  for (const candidate of document.querySelectorAll(`[data-pronunciation-network-index="${index}"] [data-reading-lang][data-reading-key]`)) {
+    if (candidate.dataset.readingLang === lang && candidate.dataset.readingKey === key) {
+      return candidate;
+    }
+  }
+  return null;
 }
 
 function networkFilterKey(index) {
@@ -2810,7 +2863,7 @@ function lightReadingKeyForLang(lang, value) {
     return parsePinyin(value).base || String(value || "").trim().toLowerCase();
   }
   if (lang === "yue") {
-    const text = String(value || "").trim().toLowerCase().replace(/[\s·.\-_/']/gu, "");
+    const text = normalizeSuperscriptToneDigits(String(value || "").trim().toLowerCase()).replace(/[\s·.\-_/']/gu, "");
     return text.replace(/[1-6]$/u, "");
   }
   if (lang === "ja") {
@@ -2846,7 +2899,7 @@ function compactChineseReadingValues(readings, fallbackKey) {
 function compactCantoneseReadingValues(readings, fallbackKey) {
   const groups = new Map();
   for (const reading of readings || []) {
-    const text = String(reading || "").trim().toLowerCase().replace(/[\s·.\-_/']/gu, "");
+    const text = normalizeSuperscriptToneDigits(String(reading || "").trim().toLowerCase()).replace(/[\s·.\-_/']/gu, "");
     const match = text.match(/([1-6])$/u);
     const tone = match?.[1] || "";
     const base = tone ? text.slice(0, -1) : text || fallbackKey || reading;
@@ -2867,7 +2920,7 @@ function compactCantoneseReadingValues(readings, fallbackKey) {
 }
 
 function parsePinyin(value) {
-  let text = String(value || "").trim().toLowerCase();
+  let text = normalizePinyinOrthography(value);
   const numbered = text.match(/([1-5])$/);
   let tone = numbered?.[1] || "";
   if (numbered) {
